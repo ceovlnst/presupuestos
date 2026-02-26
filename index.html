@@ -266,6 +266,713 @@
           <label>Contraseña</label>
           <input type="password" id="loginPassword">
 
+          <div style="margin-top:10px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <button class="btn-primary" type="button" onclick="hacerLogin()">Entrar</button>
+            <button class="btn-ghost" type="button" onclick="pedirResetPassword()" style="font-size:0.75rem;">
+              He olvidado mi contraseña
+            </button>
+          </div>
+          <div id="loginMensaje" class="message"></div>
+        </div>
+
+        <!-- ALTA -->
+        <div id="panelAlta" class="seccion oculto">
+          <div class="seccion-title">Solicitud de alta</div>
+          <div class="seccion-desc">
+            Rellena todos los campos para solicitar el alta. El administrador validará tu rol y activará el acceso.
+          </div>
+
+          <label>Email</label>
+          <input type="email" id="alta_email">
+
+          <label>Nombre completo</label>
+          <input type="text" id="alta_nombre">
+
+          <label>Rol solicitado</label>
+          <select id="alta_rol">
+            <option value="">Selecciona rol</option>
+            <option value="CIRUJANO">Cirujano</option>
+            <option value="ADMIN">Gestor / Admin</option>
+          </select>
+
+          <label>Servicio / Unidad</label>
+          <input type="text" id="alta_servicio">
+
+          <label>Contraseña</label>
+          <input type="password" id="alta_password">
+
+          <label>Repite la contraseña</label>
+          <input type="password" id="alta_password2">
+
+          <button class="btn-primary" type="button" onclick="enviarAlta()">Solicitar alta</button>
+          <div id="altaMensaje" class="message"></div>
+        </div>
+
+        <!-- CIRUJANO: NUEVO PRESUPUESTO -->
+        <div id="zonaCirujano" class="seccion oculto">
+          <div class="seccion-title">Nuevo presupuesto</div>
+          <div class="seccion-desc">
+            Define el tipo de cirugía, los honorarios y las estancias, y selecciona los
+            implantes o materiales necesarios. El valor económico solo será visible para el perfil gestor.
+          </div>
+
+          <label>Nombre del presupuesto</label>
+          <input id="pres_nombre" type="text">
+
+          <label>Honorarios médicos (€)</label>
+          <input id="pres_honor" type="number" step="0.01">
+
+          <label>Nº de estancias (noches)</label>
+          <input id="pres_estancias" type="number" step="1" min="0">
+
+          <h4 style="margin-top:14px; font-size:0.9rem;">Materiales</h4>
+          <div style="display:flex; gap:8px; align-items:center; margin-top:4px; flex-wrap:wrap;">
+            <select id="sel_producto" style="flex:1 1 auto;"></select>
+            <input id="prod_cantidad" type="number" value="1" min="1" style="width:80px;">
+            <button class="btn-ghost" type="button" onclick="agregarLinea()">Añadir</button>
+          </div>
+
+          <table id="tabla_lineas">
+            <thead>
+              <tr><th>Producto</th><th>Cantidad</th><th>Acción</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+
+          <button class="btn-primary" type="button" onclick="guardarPresupuesto()">Guardar presupuesto</button>
+          <div id="msgGuardar" class="message"></div>
+        </div>
+
+        <!-- CIRUJANO: MIS PRESUPUESTOS -->
+        <div id="zonaMisPresupuestos" class="seccion oculto">
+          <div class="seccion-title">Mis presupuestos</div>
+          <div class="seccion-desc">
+            Listado de presupuestos asociados a tu usuario. El detalle económico completo se gestiona desde el perfil de administración.
+          </div>
+          <div id="listaMisPresupuestos"></div>
+        </div>
+
+        <!-- ADMIN -->
+        <div id="zonaAdmin" class="seccion oculto">
+          <div class="seccion-title">Vista gestor / administración</div>
+          <div class="seccion-desc">
+            Resumen de presupuestos con coste de materiales y total económico por cirujano.
+          </div>
+          <div id="listaPresupuestosAdmin">Cargando...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 🔴 IMPORTANTE: pon aquí la URL de tu web app de Apps Script (la que termina en /exec)
+    const GAS_URL = "https://presupuestosh9o.ceo-vlnst.workers.dev/";
+
+    let usuarioActual = null; // {email, password, rol, nombre, servicio}
+    let productosCache = [];
+    let lineasCarrito = [];
+
+    // Función genérica para llamar a la API de GAS
+    async function apiCall(action, data) {
+      const resp = await fetch(GAS_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ action, data })
+      });
+
+      // Ojo: si hay problema CORS, aquí puede petar.
+      const json = await resp.json();
+      if (!json.ok) {
+        throw new Error(json.error || "Error desconocido en servidor");
+      }
+      return json.result;
+    }
+
+    function mostrarPanel(tipo) {
+      const panelLogin = document.getElementById("panelLogin");
+      const panelAlta  = document.getElementById("panelAlta");
+      const tabLogin   = document.getElementById("tabLogin");
+      const tabAlta    = document.getElementById("tabAlta");
+
+      if (tipo === "login") {
+        panelLogin.classList.remove("oculto");
+        panelAlta.classList.add("oculto");
+        tabLogin.classList.add("active");
+        tabAlta.classList.remove("active");
+      } else {
+        panelLogin.classList.add("oculto");
+        panelAlta.classList.remove("oculto");
+        tabLogin.classList.remove("active");
+        tabAlta.classList.add("active");
+      }
+    }
+
+    // === ALTA ===
+    async function enviarAlta() {
+      const email    = (document.getElementById("alta_email").value || "").trim();
+      const nombre   = (document.getElementById("alta_nombre").value || "").trim();
+      const rol      = document.getElementById("alta_rol").value;
+      const servicio = (document.getElementById("alta_servicio").value || "").trim();
+      const pwd1     = document.getElementById("alta_password").value;
+      const pwd2     = document.getElementById("alta_password2").value;
+      const msgDiv   = document.getElementById("altaMensaje");
+
+      msgDiv.textContent = "";
+      msgDiv.className = "message";
+
+      if (!email || !nombre || !rol || !servicio || !pwd1 || !pwd2) {
+        msgDiv.textContent = "Debes rellenar todos los campos.";
+        msgDiv.classList.add("message-error");
+        return;
+      }
+      if (pwd1 !== pwd2) {
+        msgDiv.textContent = "Las contraseñas no coinciden.";
+        msgDiv.classList.add("message-error");
+        return;
+      }
+
+      try {
+        const res = await apiCall("altaUsuario", {
+          email, nombre, rol, servicio, password: pwd1
+        });
+        msgDiv.textContent = res.mensaje || "Solicitud enviada.";
+        msgDiv.classList.add("message-ok");
+      } catch (err) {
+        msgDiv.textContent = "Error: " + err.message;
+        msgDiv.classList.add("message-error");
+      }
+    }
+
+    // === LOGIN ===
+    async function hacerLogin() {
+      const email = (document.getElementById("loginEmail").value || "").trim();
+      const pwd   = document.getElementById("loginPassword").value;
+      const msgDiv = document.getElementById("loginMensaje");
+      const infoP  = document.getElementById("infoUsuario");
+
+      msgDiv.textContent = "";
+      msgDiv.className = "message";
+
+      if (!email || !pwd) {
+        msgDiv.textContent = "Introduce email y contraseña.";
+        msgDiv.classList.add("message-error");
+        return;
+      }
+
+      try {
+        const res = await apiCall("login", { email, password: pwd });
+
+        usuarioActual = {
+          email: res.email,
+          password: pwd,
+          rol: res.rol,
+          nombre: res.nombre,
+          servicio: res.servicio
+        };
+        msgDiv.textContent = "Acceso correcto.";
+        msgDiv.classList.add("message-ok");
+
+        let texto = "Usuario: " + (res.nombre || res.email);
+        if (res.rol) texto += " (" + res.rol + ")";
+        if (res.servicio) texto += " · " + res.servicio;
+        infoP.textContent = texto;
+
+        // Mostrar zonas
+        document.getElementById("panelLogin").classList.add("oculto");
+        document.getElementById("panelAlta").classList.add("oculto");
+        document.getElementById("tabLogin").classList.add("oculto");
+        document.getElementById("tabAlta").classList.add("oculto");
+
+        if (res.rol === "CIRUJANO" || res.rol === "ADMIN") {
+          document.getElementById("zonaCirujano").classList.remove("oculto");
+          document.getElementById("zonaMisPresupuestos").classList.remove("oculto");
+          cargarProductos();
+          cargarMisPresupuestos();
+        }
+
+        if (res.rol === "ADMIN") {
+          document.getElementById("zonaAdmin").classList.remove("oculto");
+          cargarPresupuestosAdmin();
+        }
+      } catch (err) {
+        msgDiv.textContent = err.message;
+        msgDiv.classList.add("message-error");
+      }
+    }
+
+    // === PRODUCTOS / CARRITO ===
+
+    async function cargarProductos() {
+      if (!usuarioActual) return;
+      try {
+        const productos = await apiCall("getProductos", {
+          email: usuarioActual.email,
+          password: usuarioActual.password
+        });
+        productosCache = productos || [];
+        const sel = document.getElementById("sel_producto");
+        sel.innerHTML = "";
+        if (productosCache.length === 0) {
+          const opt = document.createElement("option");
+          opt.value = "";
+          opt.textContent = "No hay productos configurados";
+          sel.appendChild(opt);
+          return;
+        }
+        productosCache.forEach(p => {
+          const opt = document.createElement("option");
+          opt.value = p.id;
+          opt.textContent = p.nombre;
+          sel.appendChild(opt);
+        });
+      } catch (err) {
+        alert("Error cargando productos: " + err.message);
+      }
+    }
+
+    function agregarLinea() {
+      const sel = document.getElementById("sel_producto");
+      const idProd = sel.value;
+      if (!idProd) return;
+
+      const prod = productosCache.find(p => String(p.id) === String(idProd));
+      if (!prod) return;
+
+      const cant = parseInt(document.getElementById("prod_cantidad").value || "1", 10);
+      if (isNaN(cant) || cant <= 0) {
+        alert("Cantidad no válida.");
+        return;
+      }
+
+      lineasCarrito.push({
+        idProducto: prod.id,
+        nombre: prod.nombre,
+        cantidad: cant
+      });
+      pintarTablaLineas();
+    }
+
+    function eliminarLinea(idx) {
+      lineasCarrito.splice(idx, 1);
+      pintarTablaLineas();
+    }
+
+    function pintarTablaLineas() {
+      const tbody = document.querySelector("#tabla_lineas tbody");
+      tbody.innerHTML = "";
+      lineasCarrito.forEach((l, i) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML =
+          "<td>" + l.nombre + "</td>" +
+          "<td>" + l.cantidad + "</td>" +
+          "<td><button class='btn-ghost' type='button' onclick='eliminarLinea(" + i + ")'>Quitar</button></td>";
+        tbody.appendChild(tr);
+      });
+    }
+
+    // === GUARDAR PRESUPUESTO ===
+
+    async function guardarPresupuesto() {
+      if (!usuarioActual) return;
+
+      const nombre = (document.getElementById("pres_nombre").value || "").trim();
+      const honor = document.getElementById("pres_honor").value;
+      const estancias = document.getElementById("pres_estancias").value;
+      const msgDiv = document.getElementById("msgGuardar");
+
+      msgDiv.textContent = "";
+      msgDiv.className = "message";
+
+      if (!nombre) {
+        msgDiv.textContent = "Pon un nombre al presupuesto.";
+        msgDiv.classList.add("message-error");
+        return;
+      }
+      if (lineasCarrito.length === 0) {
+        msgDiv.textContent = "Añade al menos un material.";
+        msgDiv.classList.add("message-error");
+        return;
+      }
+
+      const datos = {
+        nombre: nombre,
+        honorarios: honor,
+        estancias: estancias
+      };
+
+      const lineas = lineasCarrito.map(l => ({
+        idProducto: l.idProducto,
+        cantidad: l.cantidad
+      }));
+
+      try {
+        const res = await apiCall("crearPresupuesto", {
+          email: usuarioActual.email,
+          password: usuarioActual.password,
+          datosPresupuesto: datos,
+          lineas: lineas
+        });
+        if (res.ok === false) {
+          throw new Error(res.error || "Error al guardar");
+        }
+        msgDiv.textContent = "Presupuesto guardado (ID: " + res.idPresupuesto + ").";
+        msgDiv.classList.add("message-ok");
+        lineasCarrito = [];
+        pintarTablaLineas();
+        document.getElementById("pres_nombre").value = "";
+        document.getElementById("pres_honor").value = "";
+        document.getElementById("pres_estancias").value = "";
+        cargarMisPresupuestos();
+      } catch (err) {
+        msgDiv.textContent = "Error: " + err.message;
+        msgDiv.classList.add("message-error");
+      }
+    }
+
+    // === MIS PRESUPUESTOS ===
+
+    async function cargarMisPresupuestos() {
+      if (!usuarioActual) return;
+      try {
+        const lista = await apiCall("getMisPresupuestos", {
+          email: usuarioActual.email,
+          password: usuarioActual.password
+        });
+        const cont = document.getElementById("listaMisPresupuestos");
+        if (!lista || lista.length === 0) {
+          cont.textContent = "Aún no tienes presupuestos.";
+          return;
+        }
+        let html = "<table><thead><tr>" +
+          "<th>ID</th><th>Nombre</th><th>Honorarios</th><th>Estancias</th><th>Fecha</th><th>Estado</th>" +
+          "</tr></thead><tbody>";
+        lista.forEach(p => {
+          html += "<tr>" +
+            "<td>" + p.idPresupuesto + "</td>" +
+            "<td>" + p.nombre + "</td>" +
+            "<td>" + p.honorarios + "</td>" +
+            "<td>" + p.estancias + "</td>" +
+            "<td>" + p.fecha + "</td>" +
+            "<td>" + p.estado + "</td>" +
+            "</tr>";
+        });
+        html += "</tbody></table>";
+        cont.innerHTML = html;
+      } catch (err) {
+        document.getElementById("listaMisPresupuestos").textContent =
+          "Error cargando tus presupuestos: " + err.message;
+      }
+    }
+
+    // === VISTA ADMIN ===
+
+    async function cargarPresupuestosAdmin() {
+      if (!usuarioActual) return;
+      try {
+        const lista = await apiCall("getPresupuestosAdmin", {
+          email: usuarioActual.email,
+          password: usuarioActual.password
+        });
+        const cont = document.getElementById("listaPresupuestosAdmin");
+        if (!lista || lista.length === 0) {
+          cont.textContent = "No hay presupuestos registrados.";
+          return;
+        }
+        let html = "<table><thead><tr>" +
+          "<th>ID</th><th>Cirujano</th><th>Nombre</th><th>Honorarios</th>" +
+          "<th>Coste materiales</th><th>Total</th><th>Fecha</th><th>Estado</th>" +
+          "</tr></thead><tbody>";
+        lista.forEach(p => {
+          html += "<tr>" +
+            "<td>" + p.idPresupuesto + "</td>" +
+            "<td>" + p.emailCirujano + "</td>" +
+            "<td>" + p.nombre + "</td>" +
+            "<td>" + p.honorarios + "</td>" +
+            "<td>" + p.costeMateriales.toFixed(2) + "</td>" +
+            "<td>" + p.total.toFixed(2) + "</td>" +
+            "<td>" + p.fecha + "</td>" +
+            "<td>" + p.estado + "</td>" +
+            "</tr>";
+        });
+        html += "</tbody></table>";
+        cont.innerHTML = html;
+      } catch (err) {
+        document.getElementById("listaPresupuestosAdmin").textContent =
+          "Error cargando presupuestos: " + err.message;
+      }
+    }
+  </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Presupuestos quirúrgicos H9O</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f4f6f9;
+      color: #1f2933;
+    }
+    .layout {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      max-width: 960px;
+      width: 100%;
+      padding: 24px 32px 28px;
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+      gap: 32px;
+    }
+    @media (max-width: 800px) {
+      .card {
+        grid-template-columns: 1fr;
+        padding: 20px;
+      }
+    }
+    .card-left {
+      border-right: 1px solid #e5e7eb;
+      padding-right: 24px;
+    }
+    @media (max-width: 800px) {
+      .card-left {
+        border-right: none;
+        border-bottom: 1px solid #e5e7eb;
+        padding-right: 0;
+        padding-bottom: 20px;
+      }
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 4px;
+      color: #0b3c5d;
+    }
+    h2 {
+      font-size: 1rem;
+      font-weight: 500;
+      margin: 0;
+      color: #6b7280;
+    }
+    .hospital-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #e0f2fe;
+      color: #075985;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      margin-top: 10px;
+    }
+    .hospital-tag-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #0284c7;
+    }
+    .subtitle {
+      margin-top: 18px;
+      font-size: 0.9rem;
+      color: #4b5563;
+      line-height: 1.5;
+    }
+    .info-list {
+      margin-top: 16px;
+      padding-left: 18px;
+      font-size: 0.9rem;
+      color: #374151;
+    }
+    .info-list li {
+      margin-bottom: 4px;
+    }
+    .small-note {
+      margin-top: 12px;
+      font-size: 0.78rem;
+      color: #6b7280;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      background-color: #e5e7eb;
+      color: #374151;
+      margin-left: 6px;
+    }
+
+    .seccion {
+      margin-top: 8px;
+    }
+    .seccion-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 6px;
+    }
+    .seccion-desc {
+      font-size: 0.82rem;
+      color: #6b7280;
+      margin-bottom: 10px;
+    }
+    .oculto {
+      display: none;
+    }
+
+    label {
+      display: block;
+      margin-top: 8px;
+      font-size: 0.8rem;
+      color: #4b5563;
+    }
+    input, select {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 6px 8px;
+      margin-top: 2px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      font-size: 0.85rem;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #0284c7;
+      box-shadow: 0 0 0 1px rgba(2,132,199,0.25);
+    }
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: 8px 16px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .btn-primary {
+      background: #0b3c5d;
+      color: #ffffff;
+    }
+    .btn-primary:hover {
+      background: #064165;
+    }
+    .btn-ghost {
+      background: transparent;
+      color: #0b3c5d;
+    }
+    .btn-ghost:hover {
+      background: #f3f4f6;
+    }
+
+    .message {
+      margin-top: 8px;
+      font-size: 0.8rem;
+    }
+    .message-ok {
+      color: #15803d;
+    }
+    .message-error {
+      color: #b91c1c;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 10px;
+      font-size: 0.8rem;
+    }
+    th, td {
+      border: 1px solid #e5e7eb;
+      padding: 6px;
+    }
+    th {
+      background: #f9fafb;
+      font-weight: 600;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .tab-btn {
+      border-radius: 999px;
+      border: 1px solid #d1d5db;
+      background: #f9fafb;
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .tab-btn.active {
+      background: #0b3c5d;
+      color: white;
+      border-color: #0b3c5d;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <div class="card">
+      <!-- LADO IZQUIERDO -->
+      <div class="card-left">
+        <h1>Gestor de presupuestos quirúrgicos</h1>
+        <h2>Traumatología y cirugía ortopédica</h2>
+        <div class="hospital-tag">
+          <div class="hospital-tag-dot"></div>
+          Entorno interno hospitalario
+        </div>
+
+        <p class="subtitle">
+          Esta herramienta está diseñada para que cada cirujano pueda estructurar los
+          materiales, honorarios y estancias de sus cirugías sin visualizar el coste
+          económico de los implantes. El control de costes y los informes detallados
+          quedan restringidos al perfil gestor.
+        </p>
+
+        <ul class="info-list">
+          <li>Los cirujanos configuran uno o varios presupuestos por tipo de cirugía.</li>
+          <li>El gestor visualiza el impacto económico y genera informes por cirujano.</li>
+          <li>El acceso se realiza con email y contraseña específicos del sistema.</li>
+        </ul>
+
+        <p class="small-note" id="infoUsuario">
+          Introduce tus credenciales o solicita el alta para comenzar.
+        </p>
+      </div>
+
+      <!-- LADO DERECHO -->
+      <div>
+        <!-- Pestañas -->
+        <div class="tabs">
+          <button id="tabLogin" class="tab-btn active" type="button" onclick="mostrarPanel('login')">
+            Acceso
+          </button>
+          <button id="tabAlta" class="tab-btn" type="button" onclick="mostrarPanel('alta')">
+            Solicitar alta
+          </button>
+        </div>
+
+        <!-- LOGIN -->
+        <div id="panelLogin" class="seccion">
+          <div class="seccion-title">Acceso al sistema</div>
+          <div class="seccion-desc">
+            Introduce tu email y contraseña para acceder. El rol y la activación se gestionan desde administración.
+          </div>
+
+          <label>Email</label>
+          <input type="email" id="loginEmail">
+
+          <label>Contraseña</label>
+          <input type="password" id="loginPassword">
+
           <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
             <button class="btn-primary" type="button" onclick="hacerLogin()">Entrar</button>
           </div>
