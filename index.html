@@ -502,6 +502,30 @@
       }
     }
 
+
+    async function pedirResetPassword() {
+      const email = (document.getElementById("loginEmail").value || "").trim();
+      const msgDiv = document.getElementById("loginMensaje");
+
+      msgDiv.textContent = "";
+      msgDiv.className = "message";
+
+      if (!email) {
+        msgDiv.textContent = "Introduce tu email y luego pulsa en 'He olvidado mi contraseña'.";
+        msgDiv.classList.add("message-error");
+        return;
+      }
+
+      try {
+        const res = await apiCall("solicitarResetPassword", { email });
+        msgDiv.textContent = res.mensaje || "Si el email existe en el sistema, se ha enviado una nueva contraseña.";
+        msgDiv.classList.add("message-ok");
+      } catch (err) {
+        msgDiv.textContent = "No se ha podido procesar la solicitud. Inténtalo de nuevo más tarde.";
+        msgDiv.classList.add("message-error");
+      }
+    }
+
     // === PRODUCTOS / CARRITO ===
 
     async function cargarProductos() {
