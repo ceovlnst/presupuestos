@@ -1001,22 +1001,25 @@
 
     async function apiCall(action, data) {
       showLoading();
-      const resp = await fetch(GAS_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ action, data })
-      });
+      try {
+        const resp = await fetch(GAS_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ action, data })
+        });
 
-      const json = await resp.json();
-      if (!json.ok) {
+        const json = await resp.json();
+        if (!json.ok) {
+          throw new Error(json.error || "Error desconocido en servidor");
+        }
+        return json.result;
+      } finally {
         hideLoading();
-      throw new Error(json.error || "Error desconocido en servidor");
       }
-      hideLoading();
-      return json.result;
     }
+
 
       // Normaliza texto: minúsculas y sin tildes para comparaciones relajadas
     function normalizarTexto(str) {
