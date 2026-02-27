@@ -209,7 +209,80 @@
       color: white;
       border-color: #0b3c5d;
     }
-  </style>
+  
+    .dialog-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    .dialog {
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(15,23,42,0.35);
+      max-width: 720px;
+      width: calc(100% - 32px);
+      max-height: 80vh;
+      padding: 20px 24px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .dialog-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    .dialog-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #111827;
+    }
+    .dialog-subtitle {
+      font-size: 0.8rem;
+      color: #6b7280;
+    }
+    .dialog-close-btn {
+      border: none;
+      background: transparent;
+      font-size: 0.9rem;
+      cursor: pointer;
+      color: #4b5563;
+    }
+    .dialog-close-btn:hover {
+      color: #111827;
+    }
+    .dialog-body {
+      font-size: 0.8rem;
+      color: #374151;
+      overflow: auto;
+      padding-top: 4px;
+      border-top: 1px solid #e5e7eb;
+    }
+    .dialog-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 6px 14px;
+      margin-bottom: 10px;
+    }
+    .dialog-summary-item-label {
+      font-size: 0.75rem;
+      color: #6b7280;
+    }
+    .dialog-summary-item-value {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #111827;
+    }
+    .dialog-footer {
+      margin-top: 10px;
+      text-align: right;
+    }
+</style>
 </head>
 <body>
   <div class="layout">
@@ -365,11 +438,37 @@
           <div class="seccion-desc">
             Resumen de presupuestos con coste de materiales y total económico por cirujano.
           </div>
-          <div id="listaPresupuestosAdmin">Cargando...</div>
+
+          <label style="margin-top:8px; font-size:0.8rem;">Buscar cirujano</label>
+          <div style="display:flex; gap:8px; align-items:center; margin-top:4px; flex-wrap:wrap;">
+            <input id="admin_filtro_cirujano" type="text" placeholder="Nombre o email del cirujano">
+            <button class="btn-ghost" type="button" onclick="filtrarPresupuestosAdmin()" style="white-space:nowrap;">Buscar</button>
+            <button class="btn-ghost" type="button" onclick="resetFiltroPresupuestosAdmin()" style="white-space:nowrap;">Limpiar</button>
+          </div>
+
+          <div id="listaPresupuestosAdmin" style="margin-top:10px;">Cargando...</div>
         </div>
       </div>
     </div>
   </div>
+
+  <div id="dialogPresupuestoOverlay" class="dialog-overlay oculto" onclick="cerrarDialogoPresupuesto()">
+    <div class="dialog" onclick="event.stopPropagation()">
+      <div class="dialog-header">
+        <div>
+          <div class="dialog-title">Detalle de presupuesto</div>
+          <div class="dialog-subtitle">Resumen económico y materiales incluidos</div>
+        </div>
+        <button class="dialog-close-btn" type="button" onclick="cerrarDialogoPresupuesto()">Cerrar ✕</button>
+      </div>
+      <div id="dialogPresupuestoContenido" class="dialog-body">
+      </div>
+      <div class="dialog-footer">
+        <button class="btn-primary" type="button" onclick="cerrarDialogoPresupuesto()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
 
   <script>
     // 🔴 IMPORTANTE: pon aquí la URL de tu web app de Apps Script (la que termina en /exec)
@@ -378,6 +477,7 @@
     let usuarioActual = null; // {email, password, rol, nombre, servicio}
     let productosCache = [];
     let lineasCarrito = [];
+    let listaPresupuestosAdminCache = [];
 
     // Función genérica para llamar a la API de GAS
     async function apiCall(action, data) {
@@ -744,34 +844,122 @@
           email: usuarioActual.email,
           password: usuarioActual.password
         });
-        const cont = document.getElementById("listaPresupuestosAdmin");
-        if (!lista || lista.length === 0) {
-          cont.textContent = "No hay presupuestos registrados.";
-          return;
-        }
-        let html = "<table><thead><tr>" +
-          "<th>ID</th><th>Cirujano</th><th>Nombre</th><th>Honorarios</th>" +
-          "<th>Coste materiales</th><th>Total</th><th>Fecha</th><th>Estado</th>" +
-          "</tr></thead><tbody>";
-        lista.forEach(p => {
-          html += "<tr>" +
-            "<td>" + p.idPresupuesto + "</td>" +
-            "<td>" + p.emailCirujano + "</td>" +
-            "<td>" + p.nombre + "</td>" +
-            "<td>" + p.honorarios + "</td>" +
-            "<td>" + p.costeMateriales.toFixed(2) + "</td>" +
-            "<td>" + p.total.toFixed(2) + "</td>" +
-            "<td>" + p.fecha + "</td>" +
-            "<td>" + p.estado + "</td>" +
-            "</tr>";
-        });
-        html += "</tbody></table>";
-        cont.innerHTML = html;
+        listaPresupuestosAdminCache = lista || [];
+        renderPresupuestosAdmin(listaPresupuestosAdminCache);
       } catch (err) {
         document.getElementById("listaPresupuestosAdmin").textContent =
           "Error cargando presupuestos: " + err.message;
       }
     }
-  </script>
+
+    function renderPresupuestosAdmin(lista) {
+      const cont = document.getElementById("listaPresupuestosAdmin");
+      if (!cont) return;
+      if (!lista || lista.length === 0) {
+        cont.textContent = "No hay presupuestos registrados.";
+        return;
+      }
+      let html = "<table><thead><tr>" +
+        "<th>ID</th><th>Cirujano</th><th>Nombre presupuesto</th><th>Honorarios</th>" +
+        "<th>Coste materiales</th><th>Total</th><th>Fecha</th><th>Estado</th><th></th>" +
+        "</tr></thead><tbody>";
+      lista.forEach(p => {
+        const nombreCir = p.nombreCirujano || p.emailCirujano || "";
+        const emailCir = p.emailCirujano || "";
+        html += "<tr>" +
+          "<td>" + p.idPresupuesto + "</td>" +
+          "<td>" + nombreCir + (emailCir ? "<br><span style='font-size:0.7rem;color:#6b7280;'>" + emailCir + "</span>" : "") + "</td>" +
+          "<td>" + (p.nombre || "") + "</td>" +
+          "<td>" + (p.honorarios || 0) + "</td>" +
+          "<td>" + (p.costeMateriales != null ? p.costeMateriales.toFixed(2) : "") + "</td>" +
+          "<td>" + (p.total != null ? p.total.toFixed(2) : "") + "</td>" +
+          "<td>" + (p.fecha || "") + "</td>" +
+          "<td>" + (p.estado || "") + "</td>" +
+          "<td><button class='btn-ghost' type='button' onclick=\"abrirDialogoPresupuesto('" + p.idPresupuesto + "')\">Consultar</button></td>" +
+          "</tr>";
+      });
+      html += "</tbody></table>";
+      cont.innerHTML = html;
+    }
+
+    function filtrarPresupuestosAdmin() {
+      const input = document.getElementById("admin_filtro_cirujano");
+      if (!input) return;
+      const filtro = (input.value || "").toLowerCase();
+      if (!filtro) {
+        renderPresupuestosAdmin(listaPresupuestosAdminCache);
+        return;
+      }
+      const filtrada = listaPresupuestosAdminCache.filter(p => {
+        const nombreCir = (p.nombreCirujano || "").toLowerCase();
+        const emailCir = (p.emailCirujano || "").toLowerCase();
+        return nombreCir.includes(filtro) || emailCir.includes(filtro);
+      });
+      renderPresupuestosAdmin(filtrada);
+    }
+
+    function resetFiltroPresupuestosAdmin() {
+      const input = document.getElementById("admin_filtro_cirujano");
+      if (input) input.value = "";
+      renderPresupuestosAdmin(listaPresupuestosAdminCache);
+    }
+
+    function abrirDialogoPresupuesto(idPresupuesto) {
+      const overlay = document.getElementById("dialogPresupuestoOverlay");
+      const cont = document.getElementById("dialogPresupuestoContenido");
+      if (!overlay || !cont) return;
+      const p = (listaPresupuestosAdminCache || []).find(x => String(x.idPresupuesto) === String(idPresupuesto));
+      if (!p) return;
+
+      const nombreCir = p.nombreCirujano || p.emailCirujano || "";
+      const emailCir = p.emailCirujano || "";
+      const lineas = p.lineas || [];
+
+      let resumenHtml = "<div class='dialog-summary-grid'>";
+      resumenHtml += "<div><div class='dialog-summary-item-label'>Cirujano</div><div class='dialog-summary-item-value'>" +
+        nombreCir + (emailCir ? " <span style='font-size:0.7rem;color:#6b7280;'>(" + emailCir + ")</span>" : "") +
+        "</div></div>";
+      resumenHtml += "<div><div class='dialog-summary-item-label'>Presupuesto</div><div class='dialog-summary-item-value'>" +
+        (p.nombre || "") + "</div></div>";
+      resumenHtml += "<div><div class='dialog-summary-item-label'>Honorarios</div><div class='dialog-summary-item-value'>" +
+        (p.honorarios || 0) + " €</div></div>";
+      resumenHtml += "<div><div class='dialog-summary-item-label'>Coste materiales</div><div class='dialog-summary-item-value'>" +
+        (p.costeMateriales != null ? p.costeMateriales.toFixed(2) : "0.00") + " €</div></div>";
+      resumenHtml += "<div><div class='dialog-summary-item-label'>Total</div><div class='dialog-summary-item-value'>" +
+        (p.total != null ? p.total.toFixed(2) : "0.00") + " €</div></div>";
+      resumenHtml += "<div><div class='dialog-summary-item-label'>Fecha</div><div class='dialog-summary-item-value'>" +
+        (p.fecha || "") + "</div></div>";
+      resumenHtml += "<div><div class='dialog-summary-item-label'>Estado</div><div class='dialog-summary-item-value'>" +
+        (p.estado || "") + "</div></div>";
+      resumenHtml += "</div>";
+
+      let tablaHtml = "";
+      if (lineas.length > 0) {
+        tablaHtml += "<table style='margin-top:6px;'><thead><tr>" +
+          "<th>Producto</th><th>Cantidad</th><th>Coste unitario</th><th>Subtotal</th>" +
+          "</tr></thead><tbody>";
+        lineas.forEach(l => {
+          tablaHtml += "<tr>" +
+            "<td>" + (l.nombreProducto || "") + "</td>" +
+            "<td>" + (l.cantidad || 0) + "</td>" +
+            "<td>" + (l.costeUnitario != null ? l.costeUnitario.toFixed(2) : "") + "</td>" +
+            "<td>" + (l.subtotal != null ? l.subtotal.toFixed(2) : "") + "</td>" +
+            "</tr>";
+        });
+        tablaHtml += "</tbody></table>";
+      } else {
+        tablaHtml += "<p style='margin-top:6px;'>Este presupuesto no tiene líneas de material almacenadas.</p>";
+      }
+
+      cont.innerHTML = resumenHtml + tablaHtml;
+      overlay.classList.remove("oculto");
+    }
+
+    function cerrarDialogoPresupuesto() {
+      const overlay = document.getElementById("dialogPresupuestoOverlay");
+      if (overlay) overlay.classList.add("oculto");
+    }
+
+  </script>>
 </body>
 </html>
