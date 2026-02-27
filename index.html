@@ -353,6 +353,43 @@
       margin-top: 10px;
       text-align: right;
     }
+
+    /* ===== LOADING OVERLAY ===== */
+    #loadingOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,0.35);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    .spinner-box {
+      background: white;
+      padding: 20px 28px;
+      border-radius: 14px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 0.9rem;
+      color: #0b3c5d;
+    }
+
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 3px solid #e5e7eb;
+      border-top: 3px solid #0b3c5d;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
 </style>
 </head>
 <body>
@@ -565,7 +602,19 @@
     let listaPresupuestosAdminCache = [];
 
     // Función genérica para llamar a la API de GAS
+    
+    function showLoading() {
+      const overlay = document.getElementById("loadingOverlay");
+      if (overlay) overlay.style.display = "flex";
+    }
+
+    function hideLoading() {
+      const overlay = document.getElementById("loadingOverlay");
+      if (overlay) overlay.style.display = "none";
+    }
+
     async function apiCall(action, data) {
+      showLoading();
       const resp = await fetch(GAS_URL, {
         method: "POST",
         headers: {
@@ -576,8 +625,10 @@
 
       const json = await resp.json();
       if (!json.ok) {
-        throw new Error(json.error || "Error desconocido en servidor");
+        hideLoading();
+      throw new Error(json.error || "Error desconocido en servidor");
       }
+      hideLoading();
       return json.result;
     }
 
@@ -655,6 +706,7 @@
         msgDiv.textContent = res.mensaje || "Solicitud enviada.";
         msgDiv.classList.add("message-ok");
       } catch (err) {
+        hideLoading();
         msgDiv.textContent = "Error: " + err.message;
         msgDiv.classList.add("message-error");
       }
@@ -718,6 +770,7 @@
           cargarUsuariosActivos();
         }
       } catch (err) {
+        hideLoading();
         msgDiv.textContent = err.message;
         msgDiv.classList.add("message-error");
       }
@@ -743,6 +796,7 @@
           "Si el email existe en el sistema, se ha eliminado el usuario asociado y deberás solicitar el alta de nuevo.";
         msgDiv.classList.add("message-ok");
       } catch (err) {
+        hideLoading();
         msgDiv.textContent = "No se ha podido procesar la solicitud. Inténtalo de nuevo más tarde.";
         msgDiv.classList.add("message-error");
       }
@@ -774,6 +828,7 @@
           sel.appendChild(opt);
         });
       } catch (err) {
+        hideLoading();
         alert("Error cargando productos: " + err.message);
       }
     }
@@ -897,6 +952,7 @@
 
         cont.classList.remove("oculto");
       } catch (err) {
+        hideLoading();
         console.error("Error cargando usuarios activos:", err);
       }
     }
@@ -965,6 +1021,7 @@
         document.getElementById("pres_estancias").value = "";
         cargarMisPresupuestos();
       } catch (err) {
+        hideLoading();
         msgDiv.textContent = "Error: " + err.message;
         msgDiv.classList.add("message-error");
       }
@@ -1000,6 +1057,7 @@
         html += "</tbody></table>";
         cont.innerHTML = html;
       } catch (err) {
+        hideLoading();
         document.getElementById("listaMisPresupuestos").textContent =
           "Error cargando tus presupuestos: " + err.message;
       }
@@ -1020,6 +1078,7 @@
         await buscarPresupuestosAdmin();
         cerrarDialogoPresupuesto();
       } catch (err) {
+        hideLoading();
         alert("No se ha podido confirmar el presupuesto: " + err.message);
       }
     }
@@ -1054,6 +1113,7 @@ async function buscarPresupuestosAdmin() {
 
         renderPresupuestosAdmin(listaMostrar);
       } catch (err) {
+        hideLoading();
         if (cont) {
           cont.textContent = "Error cargando presupuestos: " + err.message;
         }
@@ -1181,5 +1241,14 @@ async function buscarPresupuestosAdmin() {
     }
 
   </script>
+
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay">
+    <div class="spinner-box">
+      <div class="spinner"></div>
+      Procesando...
+    </div>
+  </div>
+
 </body>
 </html>
