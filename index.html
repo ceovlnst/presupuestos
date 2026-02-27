@@ -119,7 +119,36 @@
       color: #6b7280;
       margin-bottom: 10px;
     }
-    .oculto {
+
+    .panel {
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      background: #f9fafb;
+      margin-top: 12px;
+    }
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px;
+      cursor: pointer;
+    }
+    .panel-header-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #111827;
+    }
+    .panel-body {
+      padding: 8px 10px 12px;
+      border-top: 1px solid #e5e7eb;
+      display: none;
+    }
+    .panel-arrow {
+      font-size: 0.9rem;
+      color: #6b7280;
+    }
+
+.oculto {
       display: none;
     }
 
@@ -379,8 +408,12 @@
         </div>
 
         <!-- CIRUJANO: NUEVO PRESUPUESTO -->
-        <div id="zonaCirujano" class="seccion oculto">
-          <div class="seccion-title">Nuevo presupuesto</div>
+        <div id="zonaCirujano" class="seccion oculto panel">
+          <div class="panel-header" onclick="togglePanel('zonaCirujano')">
+            <span class="panel-header-title">Nuevo presupuesto</span>
+            <span class="panel-arrow" id="arrow-zonaCirujano">▼</span>
+          </div>
+          <div class="panel-body" id="body-zonaCirujano">
           <div class="seccion-desc">
             Define el tipo de cirugía, los honorarios y las estancias, y selecciona los
             implantes o materiales necesarios. El valor económico solo será visible para el perfil gestor.
@@ -388,6 +421,11 @@
 
           <label>Nombre del presupuesto</label>
           <input id="pres_nombre" type="text">
+
+          <div id="pres_campoCirujanoAsignado" class="oculto">
+            <label>Asignar presupuesto a cirujano</label>
+            <select id="pres_cirujanoAsignado"></select>
+          </div>
 
           <label>Honorarios médicos (€)</label>
           <input id="pres_honor" type="number" step="0.01">
@@ -418,20 +456,30 @@
 
           <button class="btn-primary" type="button" onclick="guardarPresupuesto()">Guardar presupuesto</button>
           <div id="msgGuardar" class="message"></div>
+          </div>
         </div>
 
         <!-- CIRUJANO: MIS PRESUPUESTOS -->
-        <div id="zonaMisPresupuestos" class="seccion oculto">
-          <div class="seccion-title">Mis presupuestos</div>
+        <div id="zonaMisPresupuestos" class="seccion oculto panel">
+          <div class="panel-header" onclick="togglePanel('zonaMisPresupuestos')">
+            <span class="panel-header-title">Mis presupuestos</span>
+            <span class="panel-arrow" id="arrow-zonaMisPresupuestos">▼</span>
+          </div>
+          <div class="panel-body" id="body-zonaMisPresupuestos">
           <div class="seccion-desc">
             Listado de presupuestos asociados a tu usuario. El detalle económico completo se gestiona desde el perfil de administración.
           </div>
           <div id="listaMisPresupuestos"></div>
+          </div>
         </div>
 
         <!-- ADMIN -->
-        <div id="zonaAdmin" class="seccion oculto">
-          <div class="seccion-title">Vista gestor / administración</div>
+        <div id="zonaAdmin" class="seccion oculto panel">
+          <div class="panel-header" onclick="togglePanel('zonaAdmin')">
+            <span class="panel-header-title">Vista gestor / administración</span>
+            <span class="panel-arrow" id="arrow-zonaAdmin">▼</span>
+          </div>
+          <div class="panel-body" id="body-zonaAdmin">
           <div class="seccion-desc">
             Resumen de presupuestos con coste de materiales y total económico por cirujano.
           </div>
@@ -444,6 +492,7 @@
           </div>
 
           <div id="listaPresupuestosAdmin" style="margin-top:10px;">Cargando...</div>
+          </div>
         </div>
       </div>
     </div>
@@ -474,6 +523,7 @@
     let usuarioActual = null; // {email, password, rol, nombre, servicio}
     let productosCache = [];
     let lineasCarrito = [];
+    let usuariosActivosCache = [];
     let listaPresupuestosAdminCache = [];
 
     // Función genérica para llamar a la API de GAS
@@ -509,6 +559,18 @@
         panelAlta.classList.remove("oculto");
         tabLogin.classList.remove("active");
         tabAlta.classList.add("active");
+      }
+    }
+
+
+    function togglePanel(id) {
+      const body = document.getElementById("body-" + id);
+      const arrow = document.getElementById("arrow-" + id);
+      if (!body) return;
+      const isHidden = body.style.display === "" || body.style.display === "none";
+      body.style.display = isHidden ? "block" : "none";
+      if (arrow) {
+        arrow.textContent = isHidden ? "▲" : "▼";
       }
     }
 
@@ -596,11 +658,17 @@
           document.getElementById("zonaMisPresupuestos").classList.remove("oculto");
           cargarProductos();
           cargarMisPresupuestos();
+
+          if (res.rol === "CIRUJANO") {
+            togglePanel('zonaCirujano');
+            togglePanel('zonaMisPresupuestos');
+          }
         }
 
         if (res.rol === "ADMIN") {
           document.getElementById("zonaAdmin").classList.remove("oculto");
           cargarPresupuestosAdmin();
+          cargarUsuariosActivos();
         }
       } catch (err) {
         msgDiv.textContent = err.message;
@@ -741,6 +809,52 @@
       });
     }
 
+
+    // === USUARIOS ACTIVOS (solo ADMIN) ===
+    async function cargarUsuariosActivos() {
+      if (!usuarioActual) return;
+      try {
+        const lista = await apiCall("getUsuariosActivos", {
+          email: usuarioActual.email,
+          password: usuarioActual.password
+        });
+        usuariosActivosCache = lista || [];
+        const cont = document.getElementById("pres_campoCirujanoAsignado");
+        const sel = document.getElementById("pres_cirujanoAsignado");
+        if (!sel || !cont) return;
+
+        sel.innerHTML = "";
+
+        if (!usuariosActivosCache.length) {
+          const opt = document.createElement("option");
+          opt.value = "";
+          opt.textContent = "No hay usuarios activos";
+          sel.appendChild(opt);
+          cont.classList.remove("oculto");
+          return;
+        }
+
+        const optVacio = document.createElement("option");
+        optVacio.value = "";
+        optVacio.textContent = "Selecciona cirujano (opcional)";
+        sel.appendChild(optVacio);
+
+        usuariosActivosCache.forEach(u => {
+          const opt = document.createElement("option");
+          opt.value = u.email;
+          const nombre = u.nombre || u.email;
+          const servicio = u.servicio ? " · " + u.servicio : "";
+          opt.textContent = nombre + " (" + u.email + ")" + servicio;
+          sel.appendChild(opt);
+        });
+
+        cont.classList.remove("oculto");
+      } catch (err) {
+        console.error("Error cargando usuarios activos:", err);
+      }
+    }
+
+
     // === GUARDAR PRESUPUESTO ===
 
     async function guardarPresupuesto() {
@@ -776,12 +890,21 @@
         cantidad: l.cantidad
       }));
 
+      let emailDestino = null;
+      if (usuarioActual.rol === "ADMIN") {
+        const selDestino = document.getElementById("pres_cirujanoAsignado");
+        if (selDestino && selDestino.value) {
+          emailDestino = selDestino.value;
+        }
+      }
+
       try {
         const res = await apiCall("crearPresupuesto", {
           email: usuarioActual.email,
           password: usuarioActual.password,
           datosPresupuesto: datos,
-          lineas: lineas
+          lineas: lineas,
+          emailCirujanoDestino: emailDestino
         });
         if (res.ok === false) {
           throw new Error(res.error || "Error al guardar");
