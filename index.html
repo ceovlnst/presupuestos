@@ -356,7 +356,7 @@
         <div id="panelAlta" class="seccion oculto">
           <div class="seccion-title">Solicitud de alta</div>
           <div class="seccion-desc">
-            Rellena todos los campos para solicitar el alta. El administrador validará tu rol y activará el acceso.
+            Rellena todos los campos para solicitar el alta. Por defecto todos los usuarios se registran como cirujanos; si procede, el administrador podrá cambiar el perfil a gestor.
           </div>
 
           <label>Email</label>
@@ -364,13 +364,6 @@
 
           <label>Nombre completo</label>
           <input type="text" id="alta_nombre">
-
-          <label>Rol solicitado</label>
-          <select id="alta_rol">
-            <option value="">Selecciona rol</option>
-            <option value="CIRUJANO">Cirujano</option>
-            <option value="ADMIN">Gestor / Admin</option>
-          </select>
 
           <label>Servicio / Unidad</label>
           <input type="text" id="alta_servicio">
@@ -523,7 +516,6 @@
     async function enviarAlta() {
       const email    = (document.getElementById("alta_email").value || "").trim();
       const nombre   = (document.getElementById("alta_nombre").value || "").trim();
-      const rol      = document.getElementById("alta_rol").value;
       const servicio = (document.getElementById("alta_servicio").value || "").trim();
       const pwd1     = document.getElementById("alta_password").value;
       const pwd2     = document.getElementById("alta_password2").value;
@@ -532,7 +524,7 @@
       msgDiv.textContent = "";
       msgDiv.className = "message";
 
-      if (!email || !nombre || !rol || !servicio || !pwd1 || !pwd2) {
+      if (!email || !nombre || !servicio || !pwd1 || !pwd2) {
         msgDiv.textContent = "Debes rellenar todos los campos.";
         msgDiv.classList.add("message-error");
         return;
@@ -545,7 +537,11 @@
 
       try {
         const res = await apiCall("altaUsuario", {
-          email, nombre, rol, servicio, password: pwd1
+          email,
+          nombre,
+          rol: "CIRUJANO",
+          servicio,
+          password: pwd1
         });
         msgDiv.textContent = res.mensaje || "Solicitud enviada.";
         msgDiv.classList.add("message-ok");
