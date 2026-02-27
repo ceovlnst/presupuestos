@@ -896,13 +896,23 @@
 
           <h4 style="margin-top:14px; font-size:0.9rem;">Materiales</h4>
 
-          <label style="margin-top:6px; font-size:0.8rem;">Buscar material</label>
-          <div style="display:flex; gap:8px; align-items:center; margin-top:4px; flex-wrap:wrap;">
-            <input id="filtro_producto" type="text" placeholder="Escribe parte del nombre del material">
-            <button class="btn-ghost" type="button" onclick="filtrarProductos()" style="white-space:nowrap;">Buscar</button>
+          <div style="display:flex; gap:8px; align-items:flex-end; margin-top:6px; flex-wrap:wrap;">
+            <div style="flex:1 1 0;">
+              <label style="font-size:0.8rem;">Producto</label>
+              <input id="filtro_producto" type="text" list="lista_productos" placeholder="Texto breve material" style="width:100%; box-sizing:border-box; margin-top:4px;">
+              <datalist id="lista_productos"></datalist>
+            </div>
+            <div style="flex:1 1 0;">
+              <label style="font-size:0.8rem;">Proveedor</label>
+              <input id="filtro_proveedor_texto" type="text" list="lista_proveedores" placeholder="Denominación proveedor" style="width:100%; box-sizing:border-box; margin-top:4px;">
+              <datalist id="lista_proveedores"></datalist>
+            </div>
+            <div>
+              <button class="btn-ghost" type="button" onclick="filtrarProductos()" style="white-space:nowrap; margin-top:4px;">Buscar</button>
+            </div>
           </div>
 
-          <div style="display:flex; gap:8px; align-items:center; margin-top:4px; flex-wrap:wrap;">
+          <div style="display:flex; gap:8px; align-items:center; margin-top:6px; flex-wrap:wrap;">
             <select id="sel_producto" style="flex:1 1 auto;"></select>
             <input id="prod_cantidad" type="number" value="1" min="1" style="width:80px;">
             <button class="btn-ghost" type="button" onclick="agregarLinea()">Añadir</button>
@@ -950,6 +960,7 @@
             <input id="admin_filtro_cirujano" type="text" placeholder="Nombre o email del cirujano">
             <button class="btn-ghost" type="button" onclick="buscarPresupuestosAdmin()" style="white-space:nowrap;">Buscar</button>
             <button class="btn-ghost" type="button" onclick="resetFiltroPresupuestosAdmin()" style="white-space:nowrap;">Limpiar</button>
+            <button class="btn-ghost" type="button" onclick="verTodosBorradoresAdmin()" style="white-space:nowrap;">Ver todos los borradores</button>
           </div>
 
           <div id="listaPresupuestosAdmin" style="margin-top:10px;">Introduce un nombre o email de cirujano y pulsa Buscar.</div>
@@ -1202,73 +1213,74 @@
         });
         productosCache = productos || [];
         const sel = document.getElementById("sel_producto");
-        sel.innerHTML = "";
-        if (productosCache.length === 0) {
-          const opt = document.createElement("option");
-          opt.value = "";
-          opt.textContent = "No hay productos configurados";
-          sel.appendChild(opt);
+        const dlProductos = document.getElementById("lista_productos");
+        const dlProveedores = document.getElementById("lista_proveedores");
+
+        if (sel) sel.innerHTML = "";
+        if (dlProductos) dlProductos.innerHTML = "";
+        if (dlProveedores) dlProveedores.innerHTML = "";
+
+        if (!productosCache || productosCache.length === 0) {
+          if (sel) {
+            const opt = document.createElement("option");
+            opt.value = "";
+            opt.textContent = "No hay productos configurados";
+            sel.appendChild(opt);
+          }
           return;
         }
+
+        // Rellenar select de productos (lista filtrada inicial = todos)
         productosCache.forEach(p => {
+          if (!sel) return;
           const opt = document.createElement("option");
           opt.value = p.id;
           opt.textContent = p.nombre + (p.descripcion ? " (" + p.descripcion + ")" : "");
           sel.appendChild(opt);
         });
+
+        // Rellenar datalist de productos para sugerencias de texto
+        if (dlProductos) {
+          const nombresUnicos = new Set();
+          productosCache.forEach(p => {
+            const nombre = (p.nombre || "").toString().trim();
+            if (nombre) nombresUnicos.add(nombre);
+          });
+          Array.from(nombresUnicos).sort().forEach(nombre => {
+            const opt = document.createElement("option");
+            opt.value = nombre;
+            dlProductos.appendChild(opt);
+          });
+        }
+
+        // Rellenar datalist de proveedores
+        if (dlProveedores) {
+          const setProv = new Set();
+          productosCache.forEach(p => {
+            const prov = (p.descripcion || "").toString().trim();
+            if (prov) setProv.add(prov);
+          });
+          Array.from(setProv).sort().forEach(prov => {
+            const opt = document.createElement("option");
+            opt.value = prov;
+            dlProveedores.appendChild(opt);
+          });
+        }
       } catch (err) {
         hideLoading();
         alert("Error cargando productos: " + err.message);
       }
     }
 
-    function agregarLinea() {
+
+function filtrarProductos() {
       const sel = document.getElementById("sel_producto");
-      const idProd = sel.value;
-      if (!idProd) return;
+      const inputProd = document.getElementById("filtro_producto");
+      const inputProv = document.getElementById("filtro_proveedor_texto");
+      if (!sel || !inputProd) return;
 
-      const prod = productosCache.find(p => String(p.id) === String(idProd));
-      if (!prod) return;
-
-      const cant = parseInt(document.getElementById("prod_cantidad").value || "1", 10);
-      if (isNaN(cant) || cant <= 0) {
-        alert("Cantidad no válida.");
-        return;
-      }
-
-      lineasCarrito.push({
-        idProducto: prod.id,
-        nombre: prod.nombre,
-        cantidad: cant
-      });
-      pintarTablaLineas();
-    }
-
-    function eliminarLinea(idx) {
-      lineasCarrito.splice(idx, 1);
-      pintarTablaLineas();
-    }
-
-    function pintarTablaLineas() {
-      const tbody = document.querySelector("#tabla_lineas tbody");
-      tbody.innerHTML = "";
-      lineasCarrito.forEach((l, i) => {
-        const tr = document.createElement("tr");
-        tr.innerHTML =
-          "<td>" + l.nombre + "</td>" +
-          "<td>" + l.cantidad + "</td>" +
-          "<td><button class='btn-ghost' type='button' onclick='eliminarLinea(" + i + ")'>Quitar</button></td>";
-        tbody.appendChild(tr);
-      });
-    }
-
-
-    function filtrarProductos() {
-      const sel = document.getElementById("sel_producto");
-      const input = document.getElementById("filtro_producto");
-      if (!sel || !input) return;
-
-      const filtro = (input.value || "").toLowerCase();
+      const filtroTexto = (inputProd.value || "").toLowerCase();
+      const filtroProv = (inputProv ? inputProv.value : "").toLowerCase();
 
       sel.innerHTML = "";
       if (!productosCache || productosCache.length === 0) {
@@ -1281,13 +1293,25 @@
 
       const listaFiltrada = productosCache.filter(p => {
         const nombre = (p.nombre || "").toString().toLowerCase();
-        return !filtro || nombre.includes(filtro);
+        const prov = (p.descripcion || "").toString();
+        const provLower = prov.toLowerCase();
+
+        const textoCoincide =
+          !filtroTexto ||
+          nombre.includes(filtroTexto) ||
+          provLower.includes(filtroTexto);
+
+        const proveedorCoincide =
+          !filtroProv ||
+          provLower.includes(filtroProv);
+
+        return textoCoincide && proveedorCoincide;
       });
 
       if (listaFiltrada.length === 0) {
         const opt = document.createElement("option");
         opt.value = "";
-        opt.textContent = "Sin resultados para ese texto";
+        opt.textContent = "Sin resultados para ese filtro";
         sel.appendChild(opt);
         return;
       }
@@ -1301,7 +1325,7 @@
     }
 
 
-    // === USUARIOS ACTIVOS (solo ADMIN) ===
+// === USUARIOS ACTIVOS (solo ADMIN) ===
     async function cargarUsuariosActivos() {
       if (!usuarioActual) return;
       try {
@@ -1472,6 +1496,33 @@
       }
     }
 
+
+async function verTodosBorradoresAdmin() {
+      if (!usuarioActual) return;
+
+      const cont = document.getElementById("listaPresupuestosAdmin");
+      if (cont) {
+        cont.textContent = "Buscando borradores...";
+      }
+
+      try {
+        const lista = await apiCall("getPresupuestosAdmin", {
+          email: usuarioActual.email,
+          password: usuarioActual.password
+        });
+        listaPresupuestosAdminCache = lista || [];
+        const soloBorradores = listaPresupuestosAdminCache.filter(p => {
+          const est = (p.estado || "").toString().toUpperCase();
+          return est === "BORRADOR";
+        });
+        renderPresupuestosAdmin(soloBorradores);
+      } catch (err) {
+        if (cont) {
+          cont.textContent = "Error cargando borradores: " + err.message;
+        }
+      }
+    }
+
 async function buscarPresupuestosAdmin() {
       if (!usuarioActual) return;
 
@@ -1518,8 +1569,8 @@ async function buscarPresupuestosAdmin() {
         return;
       }
       let html = "<div class=\"tabla-scroll\"><table><thead><tr>" +
-        "<th>ID</th><th>Cirujano</th><th>Nombre presupuesto</th><th>Honorarios</th>" +
-        "<th>Coste materiales</th><th>Total</th><th>Fecha</th><th>Estado</th><th></th>" +
+        "<th>Estado</th><th>ID</th><th>Cirujano</th><th>Nombre presupuesto</th><th>Honorarios</th>" +
+        "<th>Coste materiales</th><th>Total</th><th>Fecha</th><th></th>" +
         "</tr></thead><tbody>";
       lista.forEach(p => {
         const nombreCir = p.nombreCirujano || p.emailCirujano || "";
@@ -1535,6 +1586,7 @@ async function buscarPresupuestosAdmin() {
           : "";
 
         html += "<tr>" +
+          "<td>" + estadoHtml + "</td>" +
           "<td>" + p.idPresupuesto + "</td>" +
           "<td>" + nombreCir + (emailCir ? "<br><span class=\"texto-secundario\">" + emailCir + "</span>" : "") + "</td>" +
           "<td>" + (p.nombre || "") + "</td>" +
@@ -1542,7 +1594,6 @@ async function buscarPresupuestosAdmin() {
           "<td>" + (p.costeMateriales != null ? p.costeMateriales.toFixed(2) : "") + "</td>" +
           "<td>" + (p.total != null ? p.total.toFixed(2) : "") + "</td>" +
           "<td>" + (p.fecha || "") + "</td>" +
-          "<td>" + estadoHtml + "</td>" +
           "<td><button class='btn-ghost' type='button' onclick=\"abrirDialogoPresupuesto('" + p.idPresupuesto + "')\">Consultar</button></td>" +
           "</tr>";
       });
@@ -1633,6 +1684,10 @@ async function buscarPresupuestosAdmin() {
       Procesando...
     </div>
   </div>
+
+</body>
+</html>
+</script>
 
 </body>
 </html>
