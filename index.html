@@ -326,6 +326,10 @@
           <input id="pres_estancias" type="number" step="1" min="0">
 
           <h4 style="margin-top:14px; font-size:0.9rem;">Materiales</h4>
+
+          <label style="margin-top:6px; font-size:0.8rem;">Buscar material</label>
+          <input id="filtro_producto" type="text" placeholder="Escribe parte del nombre del material" oninput="filtrarProductos()">
+
           <div style="display:flex; gap:8px; align-items:center; margin-top:4px; flex-wrap:wrap;">
             <select id="sel_producto" style="flex:1 1 auto;"></select>
             <input id="prod_cantidad" type="number" value="1" min="1" style="width:80px;">
@@ -593,6 +597,44 @@
           "<td>" + l.cantidad + "</td>" +
           "<td><button class='btn-ghost' type='button' onclick='eliminarLinea(" + i + ")'>Quitar</button></td>";
         tbody.appendChild(tr);
+      });
+    }
+
+
+    function filtrarProductos() {
+      const sel = document.getElementById("sel_producto");
+      const input = document.getElementById("filtro_producto");
+      if (!sel || !input) return;
+
+      const filtro = (input.value || "").toLowerCase();
+
+      sel.innerHTML = "";
+      if (!productosCache || productosCache.length === 0) {
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = "No hay productos configurados";
+        sel.appendChild(opt);
+        return;
+      }
+
+      const listaFiltrada = productosCache.filter(p => {
+        const nombre = (p.nombre || "").toString().toLowerCase();
+        return !filtro || nombre.includes(filtro);
+      });
+
+      if (listaFiltrada.length === 0) {
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = "Sin resultados para ese texto";
+        sel.appendChild(opt);
+        return;
+      }
+
+      listaFiltrada.forEach(p => {
+        const opt = document.createElement("option");
+        opt.value = p.id;
+        opt.textContent = p.nombre;
+        sel.appendChild(opt);
       });
     }
 
