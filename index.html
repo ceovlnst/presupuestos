@@ -555,7 +555,7 @@
         productosCache.forEach(p => {
           const opt = document.createElement("option");
           opt.value = p.id;
-          opt.textContent = p.nombre;
+          opt.textContent = p.nombre + (p.descripcion ? " (" + p.descripcion + ")" : "");
           sel.appendChild(opt);
         });
       } catch (err) {
@@ -636,7 +636,7 @@
       listaFiltrada.forEach(p => {
         const opt = document.createElement("option");
         opt.value = p.id;
-        opt.textContent = p.nombre;
+        opt.textContent = p.nombre + (p.descripcion ? " (" + p.descripcion + ")" : "");
         sel.appendChild(opt);
       });
     }
