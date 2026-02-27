@@ -230,7 +230,35 @@
       font-weight: 600;
     }
 
-    .tabs {
+    
+    .estado-borrador {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #f97316;
+      color: #ffffff;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    .estado-confirmado {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #16a34a;
+      color: #ffffff;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    .texto-secundario {
+      font-size: 0.75rem;
+      color: #6b7280;
+    }
+    .dialog-actions-inline {
+      margin-top: 12px;
+      margin-bottom: 12px;
+      text-align: right;
+    }
+.tabs {
       display: flex;
       gap: 8px;
       margin-bottom: 8px;
@@ -501,7 +529,7 @@
             <button class="btn-ghost" type="button" onclick="resetFiltroPresupuestosAdmin()" style="white-space:nowrap;">Limpiar</button>
           </div>
 
-          <div id="listaPresupuestosAdmin" style="margin-top:10px;">Cargando...</div>
+          <div id="listaPresupuestosAdmin" style="margin-top:10px;">Introduce un nombre o email de cirujano y pulsa Buscar.</div>
           </div>
         </div>
       </div>
@@ -979,7 +1007,24 @@
 
     // === VISTA ADMIN ===
 
-    async function buscarPresupuestosAdmin() {
+    
+    async function confirmarPresupuestoDesdeDialogo(idPresupuesto) {
+      if (!usuarioActual) return;
+      try {
+        await apiCall("confirmarPresupuesto", {
+          email: usuarioActual.email,
+          password: usuarioActual.password,
+          idPresupuesto: idPresupuesto
+        });
+        // Volvemos a lanzar la búsqueda con el filtro actual para refrescar estados
+        await buscarPresupuestosAdmin();
+        cerrarDialogoPresupuesto();
+      } catch (err) {
+        alert("No se ha podido confirmar el presupuesto: " + err.message);
+      }
+    }
+
+async function buscarPresupuestosAdmin() {
       if (!usuarioActual) return;
 
       const input = document.getElementById("admin_filtro_cirujano");
@@ -1015,6 +1060,7 @@
       }
     }
 
+    
     function renderPresupuestosAdmin(lista) {
       const cont = document.getElementById("listaPresupuestosAdmin");
       if (!cont) return;
@@ -1029,15 +1075,25 @@
       lista.forEach(p => {
         const nombreCir = p.nombreCirujano || p.emailCirujano || "";
         const emailCir = p.emailCirujano || "";
+        const estado = (p.estado || "");
+        const estadoNorm = estado.toString().toUpperCase();
+        let claseEstado = "";
+        if (estadoNorm === "BORRADOR") claseEstado = "estado-borrador";
+        else if (estadoNorm === "CONFIRMADO") claseEstado = "estado-confirmado";
+
+        const estadoHtml = estado
+          ? "<span class=\"" + (claseEstado || "") + "\">" + estado + "</span>"
+          : "";
+
         html += "<tr>" +
           "<td>" + p.idPresupuesto + "</td>" +
-          "<td>" + nombreCir + (emailCir ? "<br><span style='font-size:0.75rem;color:#6b7280;'>" + emailCir + "</span>" : "") + "</td>" +
+          "<td>" + nombreCir + (emailCir ? "<br><span class=\"texto-secundario\">" + emailCir + "</span>" : "") + "</td>" +
           "<td>" + (p.nombre || "") + "</td>" +
           "<td>" + (p.honorarios || 0) + "</td>" +
           "<td>" + (p.costeMateriales != null ? p.costeMateriales.toFixed(2) : "") + "</td>" +
           "<td>" + (p.total != null ? p.total.toFixed(2) : "") + "</td>" +
           "<td>" + (p.fecha || "") + "</td>" +
-          "<td>" + (p.estado || "") + "</td>" +
+          "<td>" + estadoHtml + "</td>" +
           "<td><button class='btn-ghost' type='button' onclick=\"abrirDialogoPresupuesto('" + p.idPresupuesto + "')\">Consultar</button></td>" +
           "</tr>";
       });
@@ -1045,7 +1101,7 @@
       cont.innerHTML = html;
     }
 
-    function resetFiltroPresupuestosAdmin() {
+    function resetFiltroPresupuestosAdmin    function resetFiltroPresupuestosAdmin() {
       const input = document.getElementById("admin_filtro_cirujano");
       if (input) input.value = "";
       const cont = document.getElementById("listaPresupuestosAdmin");
@@ -1055,6 +1111,7 @@
       listaPresupuestosAdminCache = [];
     }
 
+    
     function abrirDialogoPresupuesto(idPresupuesto) {
       const overlay = document.getElementById("dialogPresupuestoOverlay");
       const cont = document.getElementById("dialogPresupuestoContenido");
@@ -1065,10 +1122,12 @@
       const nombreCir = p.nombreCirujano || p.emailCirujano || "";
       const emailCir = p.emailCirujano || "";
       const lineas = p.lineas || [];
+      const estado = (p.estado || "");
+      const estadoNorm = estado.toString().toUpperCase();
 
       let resumenHtml = "<div class='dialog-summary-grid'>";
       resumenHtml += "<div><div class='dialog-summary-item-label'>Cirujano</div><div class='dialog-summary-item-value'>" +
-        nombreCir + (emailCir ? " <span style='font-size:0.7rem;color:#6b7280;'>(" + emailCir + ")</span>" : "") +
+        nombreCir + (emailCir ? " <span class='texto-secundario'>(" + emailCir + ")</span>" : "") +
         "</div></div>";
       resumenHtml += "<div><div class='dialog-summary-item-label'>Presupuesto</div><div class='dialog-summary-item-value'>" +
         (p.nombre || "") + "</div></div>";
@@ -1078,15 +1137,20 @@
         (p.costeMateriales != null ? p.costeMateriales.toFixed(2) : "0.00") + " €</div></div>";
       resumenHtml += "<div><div class='dialog-summary-item-label'>Total</div><div class='dialog-summary-item-value'>" +
         (p.total != null ? p.total.toFixed(2) : "0.00") + " €</div></div>";
-      resumenHtml += "<div><div class='dialog-summary-item-label'>Fecha</div><div class='dialog-summary-item-value'>" +
-        (p.fecha || "") + "</div></div>";
       resumenHtml += "<div><div class='dialog-summary-item-label'>Estado</div><div class='dialog-summary-item-value'>" +
-        (p.estado || "") + "</div></div>";
+        estado + "</div></div>";
       resumenHtml += "</div>";
+
+      let accionesHtml = "";
+      if (usuarioActual && usuarioActual.rol === "ADMIN" && estadoNorm === "BORRADOR") {
+        accionesHtml = "<div class='dialog-actions-inline'>" +
+          "<button class='btn-primary' type='button' onclick=\"confirmarPresupuestoDesdeDialogo('" + p.idPresupuesto + "')\">Confirmar presupuesto</button>" +
+          "</div>";
+      }
 
       let tablaHtml = "";
       if (lineas.length > 0) {
-        tablaHtml += "<table style='margin-top:6px;'><thead><tr>" +
+        tablaHtml += "<table><thead><tr>" +
           "<th>Producto</th><th>Cantidad</th><th>Coste unitario</th><th>Subtotal</th>" +
           "</tr></thead><tbody>";
         lineas.forEach(l => {
@@ -1099,14 +1163,19 @@
         });
         tablaHtml += "</tbody></table>";
       } else {
-        tablaHtml += "<p style='margin-top:6px;'>Este presupuesto no tiene líneas de material almacenadas.</p>";
+        tablaHtml += "<p style='font-size:0.8rem;color:#6b7280;'>Este presupuesto no tiene materiales registrados.</p>";
       }
 
-      cont.innerHTML = resumenHtml + tablaHtml;
+      cont.innerHTML = resumenHtml + accionesHtml + tablaHtml;
       overlay.classList.add("activo");
     }
 
     function cerrarDialogoPresupuesto() {
+      const overlay = document.getElementById("dialogPresupuestoOverlay");
+      if (overlay) overlay.classList.remove("activo");
+    }
+
+() {
       const overlay = document.getElementById("dialogPresupuestoOverlay");
       if (overlay) overlay.classList.remove("activo");
     }
