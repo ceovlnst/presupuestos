@@ -211,6 +211,16 @@
       margin-top: 10px;
       font-size: 0.8rem;
     }
+
+    .tabla-scroll {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    .tabla-scroll table {
+      min-width: 100%;
+    }
+
     th, td {
       border: 1px solid #e5e7eb;
       padding: 6px;
@@ -1012,7 +1022,7 @@
         cont.textContent = "No se han encontrado presupuestos para ese criterio.";
         return;
       }
-      let html = "<table><thead><tr>" +
+      let html = "<div class=\"tabla-scroll\"><table><thead><tr>" +
         "<th>ID</th><th>Cirujano</th><th>Nombre presupuesto</th><th>Honorarios</th>" +
         "<th>Coste materiales</th><th>Total</th><th>Fecha</th><th>Estado</th><th></th>" +
         "</tr></thead><tbody>";
@@ -1031,7 +1041,7 @@
           "<td><button class='btn-ghost' type='button' onclick=\"abrirDialogoPresupuesto('" + p.idPresupuesto + "')\">Consultar</button></td>" +
           "</tr>";
       });
-      html += "</tbody></table>";
+      html += "</tbody></table></div>";
       cont.innerHTML = html;
     }
 
