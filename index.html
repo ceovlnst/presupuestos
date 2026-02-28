@@ -1440,7 +1440,92 @@ function filtrarProductos() {
       }
     }
 
-    // === MIS PRESUPUESTOS ===
+    
+    // === CARRITO: LÍNEAS DEL PRESUPUESTO ===
+    function pintarTablaLineas() {
+      const tabla = document.getElementById("tabla_lineas");
+      if (!tabla) return;
+      const tbody = tabla.querySelector("tbody");
+      if (!tbody) return;
+
+      if (!lineasCarrito || lineasCarrito.length === 0) {
+        tbody.innerHTML = "<tr><td colspan='3'>No hay materiales añadidos.</td></tr>";
+        return;
+      }
+
+      let html = "";
+      lineasCarrito.forEach((l, idx) => {
+        html += "<tr>" +
+          "<td>" + (l.nombreProducto || "") + "</td>" +
+          "<td>" + l.cantidad + "</td>" +
+          "<td><button class='btn-ghost' type='button' onclick=\"eliminarLinea(" + idx + ")\">Eliminar</button></td>" +
+          "</tr>";
+      });
+      tbody.innerHTML = html;
+    }
+
+    function agregarLinea() {
+      if (!usuarioActual) return;
+      const sel = document.getElementById("sel_producto");
+      const inputCant = document.getElementById("prod_cantidad");
+      const msgDiv = document.getElementById("msgGuardar");
+
+      if (!sel || !inputCant) return;
+
+      if (msgDiv) {
+        msgDiv.textContent = "";
+        msgDiv.className = "message";
+      }
+
+      const idProd = sel.value;
+      if (!idProd) {
+        if (msgDiv) {
+          msgDiv.textContent = "Selecciona un producto antes de añadir.";
+          msgDiv.classList.add("message-error");
+        }
+        return;
+      }
+
+      let cantidad = Number(inputCant.value);
+      if (!cantidad || cantidad <= 0) {
+        if (msgDiv) {
+          msgDiv.textContent = "La cantidad debe ser mayor que 0.";
+          msgDiv.classList.add("message-error");
+        }
+        return;
+      }
+
+      const prod = (productosCache || []).find(p => String(p.id) === String(idProd));
+      if (!prod) {
+        if (msgDiv) {
+          msgDiv.textContent = "No se ha encontrado el producto seleccionado.";
+          msgDiv.classList.add("message-error");
+        }
+        return;
+      }
+
+      const existente = lineasCarrito.find(l => String(l.idProducto) === String(idProd));
+      if (existente) {
+        existente.cantidad += cantidad;
+      } else {
+        lineasCarrito.push({
+          idProducto: idProd,
+          nombreProducto: prod.nombre,
+          cantidad: cantidad
+        });
+      }
+
+      inputCant.value = "1";
+      pintarTablaLineas();
+    }
+
+    function eliminarLinea(idx) {
+      if (idx < 0 || idx >= lineasCarrito.length) return;
+      lineasCarrito.splice(idx, 1);
+      pintarTablaLineas();
+    }
+
+// === MIS PRESUPUESTOS ===
 
     async function cargarMisPresupuestos() {
       if (!usuarioActual) return;
@@ -1561,6 +1646,7 @@ async function buscarPresupuestosAdmin() {
     }
 
     
+    
     function renderPresupuestosAdmin(lista) {
       const cont = document.getElementById("listaPresupuestosAdmin");
       if (!cont) return;
@@ -1569,8 +1655,8 @@ async function buscarPresupuestosAdmin() {
         return;
       }
       let html = "<div class=\"tabla-scroll\"><table><thead><tr>" +
-        "<th>Estado</th><th>ID</th><th>Cirujano</th><th>Nombre presupuesto</th><th>Honorarios</th>" +
-        "<th>Coste materiales</th><th>Total</th><th>Fecha</th><th></th>" +
+        "<th>Estado</th><th>ID</th><th>Cirujano</th><th>Nombre presupuesto</th><th>Honorarios</th><th>Estancias</th>" +
+        "<th>Coste materiales</th><th>Total</th><th>Fecha</th>" +
         "</tr></thead><tbody>";
       lista.forEach(p => {
         const nombreCir = p.nombreCirujano || p.emailCirujano || "";
@@ -1586,22 +1672,22 @@ async function buscarPresupuestosAdmin() {
           : "";
 
         html += "<tr>" +
-          "<td>" + estadoHtml + "</td>" +
+          "<td onclick=\"abrirDialogoPresupuesto('" + p.idPresupuesto + "')\" style=\"cursor:pointer;\">" + estadoHtml + "</td>" +
           "<td>" + p.idPresupuesto + "</td>" +
           "<td>" + nombreCir + (emailCir ? "<br><span class=\"texto-secundario\">" + emailCir + "</span>" : "") + "</td>" +
           "<td>" + (p.nombre || "") + "</td>" +
           "<td>" + (p.honorarios || 0) + "</td>" +
+          "<td>" + (p.estancias != null ? p.estancias : "") + "</td>" +
           "<td>" + (p.costeMateriales != null ? p.costeMateriales.toFixed(2) : "") + "</td>" +
           "<td>" + (p.total != null ? p.total.toFixed(2) : "") + "</td>" +
           "<td>" + (p.fecha || "") + "</td>" +
-          "<td><button class='btn-ghost' type='button' onclick=\"abrirDialogoPresupuesto('" + p.idPresupuesto + "')\">Consultar</button></td>" +
           "</tr>";
       });
       html += "</tbody></table></div>";
       cont.innerHTML = html;
     }
 
-    function resetFiltroPresupuestosAdmin() {
+function resetFiltroPresupuestosAdmin() {
       const input = document.getElementById("admin_filtro_cirujano");
       if (input) input.value = "";
       const cont = document.getElementById("listaPresupuestosAdmin");
@@ -1622,8 +1708,11 @@ async function buscarPresupuestosAdmin() {
       const nombreCir = p.nombreCirujano || p.emailCirujano || "";
       const emailCir = p.emailCirujano || "";
       const lineas = p.lineas || [];
+      const estancias = Number(p.estancias) || 0;
+      const costeEstancias = Number(p.costeEstancias) || (estancias * 300);
       const estado = (p.estado || "");
       const estadoNorm = estado.toString().toUpperCase();
+
 
       let resumenHtml = "<div class='dialog-summary-grid'>";
       resumenHtml += "<div><div class='dialog-summary-item-label'>Cirujano</div><div class='dialog-summary-item-value'>" +
@@ -1633,6 +1722,10 @@ async function buscarPresupuestosAdmin() {
         (p.nombre || "") + "</div></div>";
       resumenHtml += "<div><div class='dialog-summary-item-label'>Honorarios</div><div class='dialog-summary-item-value'>" +
         (p.honorarios || 0) + " €</div></div>";
+      resumenHtml += "<div><div class='dialog-summary-item-label'>Estancias</div><div class='dialog-summary-item-value'>" +
+        estancias + " noches</div></div>";
+      resumenHtml += "<div><div class='dialog-summary-item-label'>Coste estancias</div><div class='dialog-summary-item-value'>" +
+        costeEstancias.toFixed(2) + " €</div></div>";
       resumenHtml += "<div><div class='dialog-summary-item-label'>Coste materiales</div><div class='dialog-summary-item-value'>" +
         (p.costeMateriales != null ? p.costeMateriales.toFixed(2) : "0.00") + " €</div></div>";
       resumenHtml += "<div><div class='dialog-summary-item-label'>Total</div><div class='dialog-summary-item-value'>" +
