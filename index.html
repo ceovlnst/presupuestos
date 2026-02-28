@@ -120,7 +120,133 @@
       margin-bottom: 10px;
     }
 
-    .panel {
+    
+    .subcard-material {
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      background: #ffffff;
+      padding: 10px 12px;
+      margin-top: 8px;
+    }
+    .subcard-material-header {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 4px;
+    }
+    .subcard-material-body {
+      font-size: 0.8rem;
+    }
+    .fila-busqueda-material {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+    .lista-materiales {
+      max-height: 200px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .item-material {
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+      background: #f9fafb;
+      cursor: pointer;
+      font-size: 0.78rem;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+    .item-material:hover {
+      border-color: #0054a6;
+      background: #eef2ff;
+    }
+    .item-material-nombre {
+      font-weight: 500;
+      color: #111827;
+    }
+    .item-material-detalle {
+      color: #6b7280;
+      font-size: 0.75rem;
+      margin-top: 2px;
+    }
+    .item-material.vacio {
+      cursor: default;
+      background: #f3f4f6;
+      border-style: dashed;
+    }
+    .fila-seleccion-material {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 8px;
+      flex-wrap: wrap;
+      font-size: 0.8rem;
+    }
+
+    .subcard-cirujano {
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      background: #ffffff;
+      padding: 10px 12px;
+      margin-top: 8px;
+    }
+    .subcard-cirujano-header {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 4px;
+    }
+    .subcard-cirujano-body {
+      font-size: 0.8rem;
+    }
+    .lista-cirujanos {
+      max-height: 180px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 4px;
+    }
+    .item-cirujano {
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+      background: #f9fafb;
+      cursor: pointer;
+      font-size: 0.78rem;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+    .item-cirujano:hover {
+      border-color: #0054a6;
+      background: #eef2ff;
+    }
+    .item-cirujano-nombre {
+      font-weight: 500;
+      color: #111827;
+    }
+    .item-cirujano-detalle {
+      color: #6b7280;
+      font-size: 0.75rem;
+      margin-top: 2px;
+    }
+    .item-cirujano.vacio {
+      cursor: default;
+      background: #f3f4f6;
+      border-style: dashed;
+    }
+    .fila-seleccion-cirujano {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 6px;
+      flex-wrap: wrap;
+      font-size: 0.8rem;
+    }
+.panel {
       border-radius: 12px;
       border: 1px solid #e5e7eb;
       background: #f9fafb;
@@ -884,8 +1010,23 @@
           <input id="pres_nombre" type="text">
 
           <div id="pres_campoCirujanoAsignado" class="oculto">
-            <label>Asignar presupuesto a cirujano</label>
-            <select id="pres_cirujanoAsignado"></select>
+            <div class="subcard-cirujano">
+              <div class="subcard-cirujano-header">Asignar presupuesto a cirujano</div>
+              <div class="subcard-cirujano-body">
+                <div>
+                  <label style="font-size:0.8rem;">Buscar cirujano</label>
+                  <input id="filtro_cirujano" type="text" style="width:100%; box-sizing:border-box; margin-top:4px;" placeholder="Nombre, email o servicio">
+                </div>
+                <div class="lista-cirujanos" id="lista_cirujanos_resultados"></div>
+                <div class="fila-seleccion-cirujano">
+                  <span style="font-size:0.8rem;">Cirujano seleccionado:</span>
+                  <div id="pres_cirujanoSeleccionado_texto" style="flex:1 1 auto; padding:4px 8px; border-radius:8px; border:1px solid #d1d5db; background:#f9fafb;">
+                    Ninguno (se usará el propio usuario)
+                  </div>
+                  <select id="pres_cirujanoAsignado" style="display:none;"></select>
+                </div>
+              </div>
+            </div>
           </div>
 
           <label>Honorarios médicos (€)</label>
@@ -894,31 +1035,48 @@
           <label>Nº de estancias (noches)</label>
           <input id="pres_estancias" type="number" step="1" min="0">
 
-          <h4 style="margin-top:14px; font-size:0.9rem;">Materiales</h4>
+          
+<h4 style="margin-top:14px; font-size:0.9rem;">Materiales</h4>
 
-          <div style="display:flex; gap:8px; align-items:flex-end; margin-top:6px; flex-wrap:wrap;">
-            <div style="flex:1 1 0;">
-              <label style="font-size:0.8rem;">Producto</label>
-              <input id="filtro_producto" type="text" list="lista_productos" placeholder="Texto breve material" style="width:100%; box-sizing:border-box; margin-top:4px;">
-              <datalist id="lista_productos"></datalist>
-            </div>
-            <div style="flex:1 1 0;">
-              <label style="font-size:0.8rem;">Proveedor</label>
-              <input id="filtro_proveedor_texto" type="text" list="lista_proveedores" placeholder="Denominación proveedor" style="width:100%; box-sizing:border-box; margin-top:4px;">
-              <datalist id="lista_proveedores"></datalist>
-            </div>
-            <div>
-              <button class="btn-ghost" type="button" onclick="filtrarProductos()" style="white-space:nowrap; margin-top:4px;">Buscar</button>
+          <div class="subcard-material">
+            <div class="subcard-material-header">Buscar materiales</div>
+            <div class="subcard-material-body">
+              <div class="fila-busqueda-material">
+                <div style="flex:1 1 0;">
+                  <label style="font-size:0.8rem;">Texto (producto o proveedor)</label>
+                  <input id="filtro_producto" type="text" list="lista_productos" style="width:100%; box-sizing:border-box; margin-top:4px;">
+                  <datalist id="lista_productos"></datalist>
+                </div>
+                <div style="flex:1 1 0;">
+                  <label style="font-size:0.8rem;">Proveedor</label>
+                  <input id="filtro_proveedor_texto" type="text" list="lista_proveedores" style="width:100%; box-sizing:border-box; margin-top:4px;">
+                  <datalist id="lista_proveedores"></datalist>
+                </div>
+                <div>
+                  <button class="btn-ghost" type="button" onclick="filtrarProductos()" style="white-space:nowrap; margin-top:4px;">Buscar</button>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div style="display:flex; gap:8px; align-items:center; margin-top:6px; flex-wrap:wrap;">
-            <select id="sel_producto" style="flex:1 1 auto;"></select>
+          <div class="subcard-material" style="margin-top:8px;">
+            <div class="subcard-material-header">Resultados de la búsqueda</div>
+            <div class="subcard-material-body">
+              <div id="lista_productos_resultados" class="lista-materiales"></div>
+            </div>
+          </div>
+
+          <div class="fila-seleccion-material">
+            <label style="font-size:0.8rem;">Material seleccionado</label>
+            <div id="sel_producto_texto" style="flex:1 1 auto; padding:6px 8px; border-radius:8px; border:1px solid #d1d5db; background:#f9fafb; font-size:0.85rem; color:#111827;">
+              Ningún material seleccionado
+            </div>
+            <select id="sel_producto" style="display:none;"></select>
             <input id="prod_cantidad" type="number" value="1" min="1" style="width:80px;">
             <button class="btn-ghost" type="button" onclick="agregarLinea()">Añadir</button>
           </div>
 
-          <table id="tabla_lineas">
+<table id="tabla_lineas">
             <thead>
               <tr><th>Producto</th><th>Cantidad</th><th>Acción</th></tr>
             </thead>
@@ -998,6 +1156,15 @@
     let usuariosActivosCache = [];
     let listaPresupuestosAdminCache = [];
 
+
+    function initFiltroCirujano() {
+      const input = document.getElementById("filtro_cirujano");
+      if (input) {
+        input.addEventListener("input", () => {
+          renderizarListaCirujanos();
+        });
+      }
+    }
     // Función genérica para llamar a la API de GAS
     
     function showLoading() {
@@ -1273,21 +1440,34 @@
     }
 
 
-function filtrarProductos() {
+
+    function filtrarProductos() {
       const sel = document.getElementById("sel_producto");
       const inputProd = document.getElementById("filtro_producto");
       const inputProv = document.getElementById("filtro_proveedor_texto");
+      const contResultados = document.getElementById("lista_productos_resultados");
       if (!sel || !inputProd) return;
 
       const filtroTexto = (inputProd.value || "").toLowerCase();
       const filtroProv = (inputProv ? inputProv.value : "").toLowerCase();
 
       sel.innerHTML = "";
+      if (contResultados) {
+        contResultados.innerHTML = "";
+      }
+
       if (!productosCache || productosCache.length === 0) {
         const opt = document.createElement("option");
         opt.value = "";
         opt.textContent = "No hay productos configurados";
         sel.appendChild(opt);
+
+        if (contResultados) {
+          const div = document.createElement("div");
+          div.className = "item-material vacio";
+          div.textContent = "No hay productos configurados";
+          contResultados.appendChild(div);
+        }
         return;
       }
 
@@ -1313,6 +1493,13 @@ function filtrarProductos() {
         opt.value = "";
         opt.textContent = "Sin resultados para ese filtro";
         sel.appendChild(opt);
+
+        if (contResultados) {
+          const div = document.createElement("div");
+          div.className = "item-material vacio";
+          div.textContent = "Sin resultados para ese filtro";
+          contResultados.appendChild(div);
+        }
         return;
       }
 
@@ -1321,11 +1508,39 @@ function filtrarProductos() {
         opt.value = p.id;
         opt.textContent = p.nombre + (p.descripcion ? " (" + p.descripcion + ")" : "");
         sel.appendChild(opt);
+
+        if (contResultados) {
+          const item = document.createElement("div");
+          item.className = "item-material";
+
+          const nombreDiv = document.createElement("div");
+          nombreDiv.className = "item-material-nombre";
+          nombreDiv.textContent = p.nombre || "";
+
+          const detalleDiv = document.createElement("div");
+          detalleDiv.className = "item-material-detalle";
+          detalleDiv.textContent = p.descripcion || "";
+
+          item.appendChild(nombreDiv);
+          item.appendChild(detalleDiv);
+
+          item.addEventListener("click", () => {
+            sel.value = p.id;
+          
+            const textoSel = document.getElementById("sel_producto_texto");
+            if (textoSel) {
+              textoSel.textContent = p.nombre + (p.descripcion ? " (" + p.descripcion + ")" : "");
+            }
+});
+
+          contResultados.appendChild(item);
+        }
       });
     }
 
 
 // === USUARIOS ACTIVOS (solo ADMIN) ===
+    
     async function cargarUsuariosActivos() {
       if (!usuarioActual) return;
       try {
@@ -1336,22 +1551,32 @@ function filtrarProductos() {
         usuariosActivosCache = lista || [];
         const cont = document.getElementById("pres_campoCirujanoAsignado");
         const sel = document.getElementById("pres_cirujanoAsignado");
-        if (!sel || !cont) return;
+        const listaDiv = document.getElementById("lista_cirujanos_resultados");
+        const textoSel = document.getElementById("pres_cirujanoSeleccionado_texto");
+        if (!sel || !cont || !listaDiv || !textoSel) return;
 
         sel.innerHTML = "";
+        listaDiv.innerHTML = "";
 
         if (!usuariosActivosCache.length) {
           const opt = document.createElement("option");
           opt.value = "";
           opt.textContent = "No hay usuarios activos";
           sel.appendChild(opt);
+
+          const div = document.createElement("div");
+          div.className = "item-cirujano vacio";
+          div.textContent = "No hay usuarios activos";
+          listaDiv.appendChild(div);
+
           cont.classList.remove("oculto");
+        initFiltroCirujano();
           return;
         }
 
         const optVacio = document.createElement("option");
         optVacio.value = "";
-        optVacio.textContent = "Selecciona cirujano (opcional)";
+        optVacio.textContent = "Usar el propio usuario";
         sel.appendChild(optVacio);
 
         usuariosActivosCache.forEach(u => {
@@ -1363,6 +1588,9 @@ function filtrarProductos() {
           sel.appendChild(opt);
         });
 
+        // Pintamos la lista inicial completa
+        renderizarListaCirujanos();
+
         cont.classList.remove("oculto");
       } catch (err) {
         hideLoading();
@@ -1370,8 +1598,68 @@ function filtrarProductos() {
       }
     }
 
+    function renderizarListaCirujanos() {
+      const listaDiv = document.getElementById("lista_cirujanos_resultados");
+      const sel = document.getElementById("pres_cirujanoAsignado");
+      const filtroInput = document.getElementById("filtro_cirujano");
+      const textoSel = document.getElementById("pres_cirujanoSeleccionado_texto");
+      if (!listaDiv || !sel) return;
 
-    // === GUARDAR PRESUPUESTO ===
+      listaDiv.innerHTML = "";
+
+      const filtro = (filtroInput && filtroInput.value ? filtroInput.value : "").toLowerCase();
+
+      if (!usuariosActivosCache || !usuariosActivosCache.length) {
+        const div = document.createElement("div");
+        div.className = "item-cirujano vacio";
+        div.textContent = "No hay usuarios activos";
+        listaDiv.appendChild(div);
+        return;
+      }
+
+      const listaFiltrada = usuariosActivosCache.filter(u => {
+        const nombre = (u.nombre || "").toLowerCase();
+        const email = (u.email || "").toLowerCase();
+        const servicio = (u.servicio || "").toLowerCase();
+        if (!filtro) return true;
+        return nombre.includes(filtro) || email.includes(filtro) || servicio.includes(filtro);
+      });
+
+      if (!listaFiltrada.length) {
+        const div = document.createElement("div");
+        div.className = "item-cirujano vacio";
+        div.textContent = "Sin resultados para ese filtro";
+        listaDiv.appendChild(div);
+        return;
+      }
+
+      listaFiltrada.forEach(u => {
+        const item = document.createElement("div");
+        item.className = "item-cirujano";
+
+        const nombreDiv = document.createElement("div");
+        nombreDiv.className = "item-cirujano-nombre";
+        nombreDiv.textContent = u.nombre || u.email;
+
+        const detalleDiv = document.createElement("div");
+        detalleDiv.className = "item-cirujano-detalle";
+        const servicioTexto = u.servicio ? " · " + u.servicio : "";
+        detalleDiv.textContent = u.email + servicioTexto;
+
+        item.appendChild(nombreDiv);
+        item.appendChild(detalleDiv);
+
+        item.addEventListener("click", () => {
+          sel.value = u.email;
+          if (textoSel) {
+            textoSel.textContent = (u.nombre || u.email) + " (" + u.email + ")" + (u.servicio ? " · " + u.servicio : "");
+          }
+        });
+
+        listaDiv.appendChild(item);
+      });
+    }
+// === GUARDAR PRESUPUESTO ===
 
     async function guardarPresupuesto() {
       if (!usuarioActual) return;
@@ -1515,7 +1803,12 @@ function filtrarProductos() {
         });
       }
 
-      inputCant.value = "1";
+      
+      const textoSel = document.getElementById("sel_producto_texto");
+      if (textoSel) {
+        textoSel.textContent = "Ningún material seleccionado";
+      }
+inputCant.value = "1";
       pintarTablaLineas();
     }
 
