@@ -1031,9 +1031,16 @@
             <div class="subcard-cirujano">
               <div class="subcard-cirujano-header">Asignar presupuesto a cirujano</div>
               <div class="subcard-cirujano-body">
-                <div>
-                  <label style="font-size:0.8rem;">Buscar cirujano</label>
-                  <input id="filtro_cirujano" type="text" style="width:100%; box-sizing:border-box; margin-top:4px;" placeholder="Nombre, email o servicio">
+                <div style="display:flex; gap:8px; align-items:flex-end; margin-top:4px;">
+                  <div style="flex:1 1 0;">
+                    <label style="font-size:0.8rem;">Buscar cirujano</label>
+                    <input id="filtro_cirujano" type="text" style="width:100%; box-sizing:border-box; margin-top:4px;" placeholder="Nombre, email o servicio">
+                  </div>
+                  <div>
+                    <button class="btn-ghost" type="button" onclick="buscarCirujanos()" style="white-space:nowrap; margin-top:4px;">
+                      Buscar
+                    </button>
+                  </div>
                 </div>
                 <div class="lista-cirujanos" id="lista_cirujanos_resultados"></div>
                 <div class="fila-seleccion-cirujano">
@@ -1339,11 +1346,11 @@
 
         if (res.rol === "CIRUJANO" || res.rol === "ADMIN") {
           document.getElementById("zonaCirujano").classList.remove("oculto");
-          document.getElementById("zonaMisPresupuestos").classList.remove("oculto");
           cargarProductos();
-          cargarMisPresupuestos();
 
           if (res.rol === "CIRUJANO") {
+            document.getElementById("zonaMisPresupuestos").classList.remove("oculto");
+            cargarMisPresupuestos();
             togglePanel('zonaCirujano');
             togglePanel('zonaMisPresupuestos');
           }
@@ -1606,10 +1613,9 @@
           sel.appendChild(opt);
         });
 
-        // Pintamos la lista inicial completa
-        renderizarListaCirujanos();
-
+        // No pintamos la lista inicial; se mostrará solo cuando se use el filtro
         cont.classList.remove("oculto");
+        initFiltroCirujano();
       } catch (err) {
         hideLoading();
         console.error("Error cargando usuarios activos:", err);
@@ -1676,6 +1682,11 @@
 
         listaDiv.appendChild(item);
       });
+    }
+
+
+    function buscarCirujanos() {
+      renderizarListaCirujanos();
     }
 
 // === GUARDAR PRESUPUESTO ===
