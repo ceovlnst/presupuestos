@@ -1031,11 +1031,6 @@
 
           <label>Honorarios médicos (€)</label>
           <input id="pres_honor" type="number" step="0.01">
-
-          <label>Nº de estancias (noches)</label>
-          <input id="pres_estancias" type="number" step="1" min="0">
-
-          
 <h4 style="margin-top:14px; font-size:0.9rem;">Materiales</h4>
 
           <div class="subcard-material">
@@ -1666,7 +1661,6 @@
 
       const nombre = (document.getElementById("pres_nombre").value || "").trim();
       const honor = document.getElementById("pres_honor").value;
-      const estancias = document.getElementById("pres_estancias").value;
       const msgDiv = document.getElementById("msgGuardar");
 
       msgDiv.textContent = "";
@@ -1685,8 +1679,7 @@
 
       const datos = {
         nombre: nombre,
-        honorarios: honor,
-        estancias: estancias
+        honorarios: honor
       };
 
       const lineas = lineasCarrito.map(l => ({
@@ -1719,7 +1712,6 @@
         pintarTablaLineas();
         document.getElementById("pres_nombre").value = "";
         document.getElementById("pres_honor").value = "";
-        document.getElementById("pres_estancias").value = "";
         cargarMisPresupuestos();
       } catch (err) {
         hideLoading();
@@ -1728,8 +1720,8 @@
       }
     }
 
-    
-    // === CARRITO: LÍNEAS DEL PRESUPUESTO ===
+
+// === CARRITO: LÍNEAS DEL PRESUPUESTO ===
     function pintarTablaLineas() {
       const tabla = document.getElementById("tabla_lineas");
       if (!tabla) return;
@@ -1833,14 +1825,13 @@ inputCant.value = "1";
           return;
         }
         let html = "<table><thead><tr>" +
-          "<th>ID</th><th>Nombre</th><th>Honorarios</th><th>Estancias</th><th>Fecha</th><th>Estado</th>" +
+          "<th>ID</th><th>Nombre</th><th>Honorarios</th><th>Fecha</th><th>Estado</th>" +
           "</tr></thead><tbody>";
         lista.forEach(p => {
           html += "<tr>" +
             "<td>" + p.idPresupuesto + "</td>" +
             "<td>" + p.nombre + "</td>" +
             "<td>" + p.honorarios + "</td>" +
-            "<td>" + p.estancias + "</td>" +
             "<td>" + p.fecha + "</td>" +
             "<td>" + p.estado + "</td>" +
             "</tr>";
@@ -1853,6 +1844,7 @@ inputCant.value = "1";
           "Error cargando tus presupuestos: " + err.message;
       }
     }
+
 
     // === VISTA ADMIN ===
 
@@ -1948,7 +1940,7 @@ async function buscarPresupuestosAdmin() {
         return;
       }
       let html = "<div class=\"tabla-scroll\"><table><thead><tr>" +
-        "<th>Estado</th><th>ID</th><th>Cirujano</th><th>Nombre presupuesto</th><th>Honorarios</th><th>Estancias</th>" +
+        "<th>Estado</th><th>ID</th><th>Cirujano</th><th>Nombre presupuesto</th><th>Honorarios</th>" +
         "<th>Coste materiales</th><th>Total</th><th>Fecha</th>" +
         "</tr></thead><tbody>";
       lista.forEach(p => {
@@ -1970,7 +1962,6 @@ async function buscarPresupuestosAdmin() {
           "<td>" + nombreCir + (emailCir ? "<br><span class=\"texto-secundario\">" + emailCir + "</span>" : "") + "</td>" +
           "<td>" + (p.nombre || "") + "</td>" +
           "<td>" + (p.honorarios || 0) + "</td>" +
-          "<td>" + (p.estancias != null ? p.estancias : "") + "</td>" +
           "<td>" + (p.costeMateriales != null ? p.costeMateriales.toFixed(2) : "") + "</td>" +
           "<td>" + (p.total != null ? p.total.toFixed(2) : "") + "</td>" +
           "<td>" + (p.fecha || "") + "</td>" +
@@ -1979,6 +1970,7 @@ async function buscarPresupuestosAdmin() {
       html += "</tbody></table></div>";
       cont.innerHTML = html;
     }
+
 
 function resetFiltroPresupuestosAdmin() {
       const input = document.getElementById("admin_filtro_cirujano");
@@ -1990,7 +1982,8 @@ function resetFiltroPresupuestosAdmin() {
       listaPresupuestosAdminCache = [];
     }
 
-    
+
+
     function abrirDialogoPresupuesto(idPresupuesto) {
       const overlay = document.getElementById("dialogPresupuestoOverlay");
       const cont = document.getElementById("dialogPresupuestoContenido");
@@ -2001,11 +1994,8 @@ function resetFiltroPresupuestosAdmin() {
       const nombreCir = p.nombreCirujano || p.emailCirujano || "";
       const emailCir = p.emailCirujano || "";
       const lineas = p.lineas || [];
-      const estancias = Number(p.estancias) || 0;
-      const costeEstancias = Number(p.costeEstancias) || (estancias * 300);
       const estado = (p.estado || "");
       const estadoNorm = estado.toString().toUpperCase();
-
 
       let resumenHtml = "<div class='dialog-summary-grid'>";
       resumenHtml += "<div><div class='dialog-summary-item-label'>Cirujano</div><div class='dialog-summary-item-value'>" +
@@ -2015,10 +2005,6 @@ function resetFiltroPresupuestosAdmin() {
         (p.nombre || "") + "</div></div>";
       resumenHtml += "<div><div class='dialog-summary-item-label'>Honorarios</div><div class='dialog-summary-item-value'>" +
         (p.honorarios || 0) + " €</div></div>";
-      resumenHtml += "<div><div class='dialog-summary-item-label'>Estancias</div><div class='dialog-summary-item-value'>" +
-        estancias + " noches</div></div>";
-      resumenHtml += "<div><div class='dialog-summary-item-label'>Coste estancias</div><div class='dialog-summary-item-value'>" +
-        costeEstancias.toFixed(2) + " €</div></div>";
       resumenHtml += "<div><div class='dialog-summary-item-label'>Coste materiales</div><div class='dialog-summary-item-value'>" +
         (p.costeMateriales != null ? p.costeMateriales.toFixed(2) : "0.00") + " €</div></div>";
       resumenHtml += "<div><div class='dialog-summary-item-label'>Total</div><div class='dialog-summary-item-value'>" +
@@ -2056,10 +2042,13 @@ function resetFiltroPresupuestosAdmin() {
       overlay.classList.add("activo");
     }
 
+
     function cerrarDialogoPresupuesto() {
       const overlay = document.getElementById("dialogPresupuestoOverlay");
       if (overlay) overlay.classList.remove("activo");
     }
+
+  
 
   </script>
 
@@ -2070,10 +2059,6 @@ function resetFiltroPresupuestosAdmin() {
       Procesando...
     </div>
   </div>
-
-</body>
-</html>
-</script>
 
 </body>
 </html>
