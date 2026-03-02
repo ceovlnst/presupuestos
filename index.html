@@ -388,6 +388,14 @@
       font-size: 0.75rem;
       font-weight: 500;
     }
+
+    .acciones-estado {
+      margin-top: 4px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
     .texto-secundario {
       font-size: 0.75rem;
       color: #6b7280;
@@ -1974,7 +1982,7 @@ inputCant.value = "1";
 
 // === MIS PRESUPUESTOS ===
 
-    async function cargarMisPresupuestos() {
+        async function cargarMisPresupuestos() {
       if (!usuarioActual) return;
       try {
         const lista = await apiCall("getMisPresupuestos", {
@@ -1987,7 +1995,12 @@ inputCant.value = "1";
           return;
         }
         let html = "<div class=\"tabla-scroll\"><table><thead><tr>" +
-          "<th>Estado</th><th>ID</th><th>Nombre presupuesto</th><th>Honorarios</th><th>Fecha</th><th>Acciones</th>" +
+          "<th style='text-align:center;'>Estado</th>" +
+          "<th style='text-align:center;'>ID</th>" +
+          "<th style='text-align:center;'>Nombre presupuesto</th>" +
+          "<th style='text-align:center;'>Honorarios</th>" +
+          "<th style='text-align:center;'>Coste total</th>" +
+          "<th style='text-align:center;'>Fecha</th>" +
           "</tr></thead><tbody>";
         lista.forEach(p => {
           const estado = (p.estado || "").toString();
@@ -2001,7 +2014,7 @@ inputCant.value = "1";
           else if (estadoNorm === "CONFIRMADO") claseEstado = "estado-confirmado";
 
           const estadoHtml = estado
-            ? "<span class=\"" + (claseEstado || "") + "\">" + estado + "</span>"
+            ? "<span class=\"" + (claseEstado || "") + "\" onclick=\"abrirDialogoPresupuestoCirujano('" + p.idPresupuesto + "')\" style=\"cursor:pointer;\">" + estado + "</span>"
             : "";
 
           let acciones = "";
@@ -2016,13 +2029,32 @@ inputCant.value = "1";
             acciones = "<span class='texto-secundario'>—</span>";
           }
 
+          const celdaEstado = acciones
+            ? estadoHtml + "<div class=\"acciones-estado\">" + acciones + "</div>"
+            : estadoHtml;
+
+          const honorNum = Number(p.honorarios);
+          const honorariosTexto = isNaN(honorNum)
+            ? "—"
+            : honorNum.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+
+          let totalNum;
+          if (typeof p.total === "number") {
+            totalNum = p.total;
+          } else if (!isNaN(honorNum)) {
+            totalNum = honorNum;
+          } else {
+            totalNum = 0;
+          }
+          const totalTexto = totalNum.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+
           html += "<tr>" +
-            "<td>" + estadoHtml + "</td>" +
-            "<td>" + p.idPresupuesto + "</td>" +
-            "<td>" + p.nombre + "</td>" +
-            "<td>" + p.honorarios + "</td>" +
-            "<td>" + p.fecha + "</td>" +
-            "<td>" + acciones + "</td>" +
+            "<td style='text-align:center;'>" + celdaEstado + "</td>" +
+            "<td style='text-align:center;'>" + p.idPresupuesto + "</td>" +
+            "<td style='text-align:center;'>" + (p.nombre || "") + "</td>" +
+            "<td style='text-align:center;'>" + honorariosTexto + "</td>" +
+            "<td style='text-align:center;'>" + totalTexto + "</td>" +
+            "<td style='text-align:center;'>" + (p.fecha || "") + "</td>" +
             "</tr>";
         });
         html += "</tbody></table></div>";
@@ -2035,7 +2067,8 @@ inputCant.value = "1";
     }
 
 
-    // === VISTA ADMIN ===
+    
+// === VISTA ADMIN ===
 
 
 
@@ -2140,7 +2173,7 @@ async function buscarPresupuestosAdmin() {
       }
       let html = "<div class=\"tabla-scroll\"><table><thead><tr>" +
         "<th>Estado</th><th>ID</th><th>Cirujano</th><th>Nombre presupuesto</th><th>Honorarios</th>" +
-        "<th>Coste recursos</th><th>Total</th><th>Fecha</th><th>Acciones</th>" +
+        "<th>Coste recursos</th><th>Total</th><th>Fecha</th>" +
         "</tr></thead><tbody>";
       lista.forEach(p => {
         const nombreCir = p.nombreCirujano || p.emailCirujano || "";
@@ -2151,13 +2184,9 @@ async function buscarPresupuestosAdmin() {
         if (estadoNorm === "BORRADOR") claseEstado = "estado-borrador";
         else if (estadoNorm === "CONFIRMADO") claseEstado = "estado-confirmado";
 
-        const estadoHtml = estado
-          ? "<span class=\"" + (claseEstado || "") + "\">" + estado + "</span>"
-          : "";
-
         const puedeEditar = (estadoNorm === "BORRADOR");
         const puedeBorrar = (estadoNorm === "BORRADOR" || estadoNorm === "CONFIRMADO");
-                const puedeImprimir = (estadoNorm === "BORRADOR" || estadoNorm === "CONFIRMADO");
+        const puedeImprimir = (estadoNorm === "BORRADOR" || estadoNorm === "CONFIRMADO");
 
         let acciones = "";
         if (puedeEditar) {
@@ -2171,12 +2200,16 @@ async function buscarPresupuestosAdmin() {
           acciones = "<span class='texto-secundario'>—</span>";
         }
 
-        if (!acciones) {
-          acciones = "<span class='texto-secundario'>—</span>";
-        }
+        const estadoHtml = estado
+          ? "<span class=\"" + (claseEstado || "") + "\" onclick=\"abrirDialogoPresupuesto('" + p.idPresupuesto + "')\" style=\"cursor:pointer;\">" + estado + "</span>"
+          : "";
+
+        const celdaEstado = acciones
+          ? estadoHtml + "<div class=\"acciones-estado\">" + acciones + "</div>"
+          : estadoHtml;
 
         html += "<tr>" +
-          "<td onclick=\"abrirDialogoPresupuesto('" + p.idPresupuesto + "')\" style=\"cursor:pointer;\">" + estadoHtml + "</td>" +
+          "<td>" + celdaEstado + "</td>" +
           "<td>" + p.idPresupuesto + "</td>" +
           "<td>" + nombreCir + (emailCir ? "<br><span class=\"texto-secundario\">" + emailCir + "</span>" : "") + "</td>" +
           "<td>" + (p.nombre || "") + "</td>" +
@@ -2184,7 +2217,6 @@ async function buscarPresupuestosAdmin() {
           "<td>" + (p.costeMateriales != null ? p.costeMateriales.toFixed(2) : "") + "</td>" +
           "<td>" + (p.total != null ? p.total.toFixed(2) : "") + "</td>" +
           "<td>" + (p.fecha || "") + "</td>" +
-          "<td>" + acciones + "</td>" +
           "</tr>";
       });
       html += "</tbody></table></div>";
@@ -2276,7 +2308,74 @@ function resetFiltroPresupuestosAdmin() {
   
 
     
-    async function imprimirPresupuestoDesdeDialogo() {
+    
+    async function abrirDialogoPresupuestoCirujano(idPresupuesto) {
+      if (!usuarioActual || usuarioActual.rol !== "CIRUJANO") return;
+      dialogPresupuestoIdActual = idPresupuesto;
+
+      const overlay = document.getElementById("dialogPresupuestoOverlay");
+      const cont = document.getElementById("dialogPresupuestoContenido");
+      if (!overlay || !cont) return;
+
+      // Ajustamos el texto del diálogo para la vista de cirujano
+      const titulo = overlay.querySelector(".dialog-title");
+      const subtitulo = overlay.querySelector(".dialog-subtitle");
+      if (titulo) titulo.textContent = "Detalle de presupuesto";
+      if (subtitulo) subtitulo.textContent = "Resumen de recursos incluidos";
+
+      try {
+        showLoading();
+        const datos = await apiCall("getPresupuestoEdicion", {
+          email: usuarioActual.email,
+          password: usuarioActual.password,
+          idPresupuesto: idPresupuesto
+        });
+        hideLoading();
+
+        const nombreCir = datos.nombreCirujano || usuarioActual.nombre || usuarioActual.email || "";
+        const emailCir = datos.emailCirujano || usuarioActual.email || "";
+        const lineas = datos.lineas || [];
+        const estado = (datos.estado || "");
+        const honorarios = datos.honorarios || 0;
+
+        let resumenHtml = "<div class='dialog-summary-grid'>";
+        resumenHtml += "<div><div class='dialog-summary-item-label'>Cirujano</div><div class='dialog-summary-item-value'>" +
+          nombreCir + (emailCir ? " <span class='texto-secundario'>(" + emailCir + ")</span>" : "") +
+          "</div></div>";
+        resumenHtml += "<div><div class='dialog-summary-item-label'>Presupuesto</div><div class='dialog-summary-item-value'>" +
+          (datos.nombre || "") + "</div></div>";
+        resumenHtml += "<div><div class='dialog-summary-item-label'>Honorarios</div><div class='dialog-summary-item-value'>" +
+          honorarios + " €</div></div>";
+        resumenHtml += "<div><div class='dialog-summary-item-label'>Estado</div><div class='dialog-summary-item-value'>" +
+          estado + "</div></div>";
+        resumenHtml += "</div>";
+
+        let tablaHtml = "";
+        if (lineas.length > 0) {
+          tablaHtml += "<table><thead><tr>" +
+            "<th>Producto</th><th>Cantidad</th>" +
+            "</tr></thead><tbody>";
+          lineas.forEach(l => {
+            tablaHtml += "<tr>" +
+              "<td>" + (l.nombreProducto || l.idProducto || "") + "</td>" +
+              "<td>" + (l.cantidad || 0) + "</td>" +
+              "</tr>";
+          });
+          tablaHtml += "</tbody></table>";
+        } else {
+          tablaHtml += "<p style='font-size:0.8rem;color:#6b7280;'>Este presupuesto no tiene recursos registrados.</p>";
+        }
+
+        cont.innerHTML = resumenHtml + tablaHtml;
+        overlay.classList.add("activo");
+      } catch (err) {
+        hideLoading();
+        console.error("Error cargando detalle de presupuesto para cirujano:", err);
+        alert("No se ha podido cargar el detalle del presupuesto.");
+      }
+    }
+
+async function imprimirPresupuestoDesdeDialogo() {
       if (!dialogPresupuestoIdActual || !usuarioActual) return;
       try {
         const datos = await apiCall("getPresupuestoEdicion", {
@@ -2286,7 +2385,7 @@ function resetFiltroPresupuestosAdmin() {
         });
 
         let totalRecursos = 0;
-        const filas = (datos.lineas || []).map((l, idx) => {
+        const filasAdmin = (datos.lineas || []).map((l, idx) => {
           const nombre = l.nombreProducto || l.idProducto || "";
           const cantidad = Number(l.cantidad) || 1;
           const costeUnitario = Number(l.costeUnitario) || 0;
@@ -2326,7 +2425,8 @@ function resetFiltroPresupuestosAdmin() {
         const fechaTexto = fecha.toLocaleDateString("es-ES") + " " +
           fecha.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
 
-        const html = "<!DOCTYPE html><html lang='es'><head>" +
+        // Construimos HTML distinto según el rol
+        let html = "<!DOCTYPE html><html lang='es'><head>" +
           "<meta charset='UTF-8'>" +
           "<title>Presupuesto " + datos.idPresupuesto + "</title>" +
           "<style>" +
@@ -2338,7 +2438,7 @@ function resetFiltroPresupuestosAdmin() {
           "th,td{border:1px solid #e5e7eb;padding:6px 8px;}" +
           "th{background:#f3f4f6;text-align:left;}" +
           "tfoot td{font-weight:600;}" +
-          ".totales{margin-top:18px;max-width:320px;}" +
+          ".totales{margin-top:16px;max-width:360px;margin-left:auto;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;background:#f9fafb;}" +
           ".totales-row{display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:4px;}" +
           ".totales-row strong{color:#111827;}" +
           ".totales-row span{color:#111827;}" +
@@ -2348,17 +2448,43 @@ function resetFiltroPresupuestosAdmin() {
           "</head><body>" +
           "<h1>Presupuesto quirúrgico</h1>" +
           "<h2>ID " + datos.idPresupuesto + " · " + (datos.nombre || "") + "</h2>" +
-          "<div class='meta'>Generado el " + fechaTexto + " · Responsable: " + (datos.nombreCirujano || datos.emailCirujano || usuarioActual.nombre || usuarioActual.email) + "</div>" +
-          "<table>" +
-          "<thead><tr><th>#</th><th>Recurso</th><th style='text-align:right;'>Cantidad</th><th style='text-align:right;'>Coste unitario</th><th style='text-align:right;'>Importe</th></tr></thead>" +
-          "<tbody>" + (filas || "<tr><td colspan='5'>No hay recursos asociados.</td></tr>") + "</tbody>" +
-          "</table>" +
-          "<div class='totales'>" +
-          "<div class='totales-row'><strong>Honorarios profesionales</strong><span>" + honorariosTexto + "</span></div>" +
-          "<div class='totales-row'><strong>Coste recursos</strong><span>" + totalRecursosTexto + "</span></div>" +
-          "<div class='totales-row total'><strong>Total presupuesto</strong><span>" + totalGeneralTexto + "</span></div>" +
-          "</div>" +
-          "</body></html>";
+          "<div class='meta'>Generado el " + fechaTexto + " · Responsable: " + (datos.nombreCirujano || usuarioActual.nombre || usuarioActual.email) + "</div>";
+
+        if (usuarioActual.rol === "CIRUJANO") {
+          // Vista simplificada: sin costes por recurso, solo descripción y cantidad
+          const filasCirujano = (datos.lineas || []).map((l, idx) => {
+            const nombre = l.nombreProducto || l.idProducto || "";
+            const cantidad = Number(l.cantidad) || 1;
+            return "<tr>" +
+              "<td>" + (idx + 1) + "</td>" +
+              "<td>" + nombre + "</td>" +
+              "<td style='text-align:right;'>" + cantidad + "</td>" +
+            "</tr>";
+          }).join("");
+
+          html += "<table>" +
+            "<thead><tr>" +
+            "<th>#</th><th>Recurso</th><th style='text-align:right;'>Cantidad</th>" +
+            "</tr></thead><tbody>" +
+            (filasCirujano || "<tr><td colspan='3'>No hay recursos asociados.</td></tr>") +
+            "</tbody></table>" +
+            "<div class='totales'>" +
+            "<div class='totales-row total'><strong>Coste total</strong><span>" + totalGeneralTexto + "</span></div>" +
+            "</div>" +
+            "</body></html>";
+        } else {
+          // Vista completa para administración con desglose económico
+          html += "<table>" +
+            "<thead><tr><th>#</th><th>Recurso</th><th style='text-align:right;'>Cantidad</th><th style='text-align:right;'>Coste unitario</th><th style='text-align:right;'>Importe</th></tr></thead>" +
+            "<tbody>" + (filasAdmin || "<tr><td colspan='5'>No hay recursos asociados.</td></tr>") + "</tbody>" +
+            "</table>" +
+            "<div class='totales'>" +
+            "<div class='totales-row'><strong>Honorarios profesionales</strong><span>" + honorariosTexto + "</span></div>" +
+            "<div class='totales-row'><strong>Coste recursos</strong><span>" + totalRecursosTexto + "</span></div>" +
+            "<div class='totales-row total'><strong>Total presupuesto</strong><span>" + totalGeneralTexto + "</span></div>" +
+            "</div>" +
+            "</body></html>";
+        }
 
         w.document.open();
         w.document.write(html);
