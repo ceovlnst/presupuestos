@@ -2259,6 +2259,7 @@ function resetFiltroPresupuestosAdmin() {
 
   
 
+    
     async function imprimirPresupuestoDesdeDialogo() {
       if (!dialogPresupuestoIdActual || !usuarioActual) return;
       try {
@@ -2268,24 +2269,12 @@ function resetFiltroPresupuestosAdmin() {
           idPresupuesto: dialogPresupuestoIdActual
         });
 
-        const productos = await apiCall("getProductos", {
-          email: usuarioActual.email,
-          password: usuarioActual.password
-        });
-
-        const mapaProductos = {};
-        (productos || []).forEach(p => {
-          if (!p || !p.id) return;
-          mapaProductos[p.id] = p;
-        });
-
         let totalRecursos = 0;
         const filas = (datos.lineas || []).map((l, idx) => {
-          const prod = mapaProductos[l.idProducto] || {};
-          const nombre = l.nombreProducto || prod.nombre || l.idProducto || "";
+          const nombre = l.nombreProducto || l.idProducto || "";
           const cantidad = Number(l.cantidad) || 1;
-          const costeUnitario = typeof prod.coste === "number" ? prod.coste : 0;
-          const subtotal = costeUnitario * cantidad;
+          const costeUnitario = Number(l.costeUnitario) || 0;
+          const subtotal = typeof l.importe === "number" ? l.importe : costeUnitario * cantidad;
           totalRecursos += subtotal;
 
           const costeTexto = costeUnitario
@@ -2325,7 +2314,7 @@ function resetFiltroPresupuestosAdmin() {
           "<meta charset='UTF-8'>" +
           "<title>Presupuesto " + datos.idPresupuesto + "</title>" +
           "<style>" +
-          "body{font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:32px;color:#111827;}" +
+          "body{font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:32px auto;max-width:900px;color:#111827;}" +
           "h1{font-size:1.4rem;margin:0 0 4px;color:#0027c2;}" +
           "h2{font-size:0.95rem;margin:0 0 16px;color:#4b5563;}" +
           ".meta{font-size:0.8rem;color:#6b7280;margin-bottom:16px;}" +
@@ -2338,12 +2327,12 @@ function resetFiltroPresupuestosAdmin() {
           ".totales-row strong{color:#111827;}" +
           ".totales-row span{color:#111827;}" +
           ".totales-row.total{font-size:0.9rem;border-top:1px solid #e5e7eb;padding-top:6px;margin-top:4px;}" +
-          "@media print{body{margin:8mm;}button{display:none;}}" +
+          "@media print{body{margin:8mm auto;}button{display:none;}}" +
           "</style>" +
           "</head><body>" +
           "<h1>Presupuesto quirúrgico</h1>" +
           "<h2>ID " + datos.idPresupuesto + " · " + (datos.nombre || "") + "</h2>" +
-          "<div class='meta'>Generado el " + fechaTexto + "</div>" +
+          "<div class='meta'>Generado el " + fechaTexto + " · Responsable: " + (datos.nombreCirujano || datos.emailCirujano || usuarioActual.nombre || usuarioActual.email) + "</div>" +
           "<table>" +
           "<thead><tr><th>#</th><th>Recurso</th><th style='text-align:right;'>Cantidad</th><th style='text-align:right;'>Coste unitario</th><th style='text-align:right;'>Importe</th></tr></thead>" +
           "<tbody>" + (filas || "<tr><td colspan='5'>No hay recursos asociados.</td></tr>") + "</tbody>" +
