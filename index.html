@@ -1986,15 +1986,23 @@ inputCant.value = "1";
           cont.textContent = "Aún no tienes presupuestos.";
           return;
         }
-        let html = "<table><thead><tr>" +
-          "<th>ID</th><th>Nombre</th><th>Honorarios</th><th>Fecha</th><th>Estado</th><th>Acciones</th>" +
+        let html = "<div class=\"tabla-scroll\"><table><thead><tr>" +
+          "<th>Estado</th><th>ID</th><th>Nombre presupuesto</th><th>Honorarios</th><th>Fecha</th><th>Acciones</th>" +
           "</tr></thead><tbody>";
         lista.forEach(p => {
           const estado = (p.estado || "").toString();
           const estadoNorm = estado.toUpperCase();
           const puedeEditar = (estadoNorm === "BORRADOR");
           const puedeBorrar = (estadoNorm === "BORRADOR" || estadoNorm === "CONFIRMADO");
-                    const puedeImprimir = (estadoNorm === "BORRADOR" || estadoNorm === "CONFIRMADO");
+          const puedeImprimir = (estadoNorm === "BORRADOR" || estadoNorm === "CONFIRMADO");
+
+          let claseEstado = "";
+          if (estadoNorm === "BORRADOR") claseEstado = "estado-borrador";
+          else if (estadoNorm === "CONFIRMADO") claseEstado = "estado-confirmado";
+
+          const estadoHtml = estado
+            ? "<span class=\"" + (claseEstado || "") + "\">" + estado + "</span>"
+            : "";
 
           let acciones = "";
           if (puedeEditar) {
@@ -2007,20 +2015,17 @@ inputCant.value = "1";
           if (!acciones) {
             acciones = "<span class='texto-secundario'>—</span>";
           }
-          if (!acciones) {
-            acciones = "<span class='texto-secundario'>—</span>";
-          }
 
           html += "<tr>" +
+            "<td>" + estadoHtml + "</td>" +
             "<td>" + p.idPresupuesto + "</td>" +
             "<td>" + p.nombre + "</td>" +
             "<td>" + p.honorarios + "</td>" +
             "<td>" + p.fecha + "</td>" +
-            "<td>" + estado + "</td>" +
             "<td>" + acciones + "</td>" +
             "</tr>";
         });
-        html += "</tbody></table>";
+        html += "</tbody></table></div>";
         cont.innerHTML = html;
       } catch (err) {
         hideLoading();
